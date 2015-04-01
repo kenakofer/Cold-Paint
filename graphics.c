@@ -30,6 +30,11 @@ void outlineRect(Color c, int x, int y, int width, int height){
     SDL_RenderDrawRect(g.renderer, &r);
 } 
 
+void drawLine(Color c, int x1, int y1, int x2, int y2){
+	SDL_SetRenderDrawColor(g.renderer, c.red, c.green, c.blue, c.alpha);
+	SDL_RenderDrawLine(g.renderer, x1,y1,x2,y2);
+}
+
 void drawNum(Color c, int n, int x, int y, int width, int height){
 	SDL_SetRenderDrawColor(g.renderer, c.red, c.green, c.blue, c.alpha);
 	int x2=x+width;

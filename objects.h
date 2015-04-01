@@ -4,6 +4,8 @@
 #include "graphics.h"
 #include <stdbool.h>
 
+typedef enum {NONE=0, SAFE_WATER=1, SAFE_EXPLODE=1<<1, FLY=1<<2, BOX_COLOR=1<<3, METALIZE=1<<4, BOMBIZE=1<<5} powerups;
+
 typedef struct {
 	int id;
 	int classid;
@@ -22,6 +24,7 @@ typedef struct {
 	bool no_leave_screen;
 	int marked;
 	double score;
+	int pow;
 	Color color;
 
 	//Penguin stuff
@@ -50,6 +53,7 @@ GameObject splinter(int id, Color c, double x, double y);
 GameObject crawler(int id, double x, double y);
 GameObject missile(int id, double x, double y);
 GameObject bonusbox(int id, double x, double y);
+GameObject powerbox(int id, double x, double y);
 GameObject* null();
 
 int sign(double a);

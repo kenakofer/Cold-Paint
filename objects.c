@@ -21,6 +21,7 @@
 #define GHO_ID 10
 #define NUM_ID 11
 #define BON_ID 12
+#define POW_ID 13
 
 #define RESOLUTION 16
 #define PEN_W RESOLUTION
@@ -35,6 +36,7 @@
 #define BOM_H RESOLUTION*2
 #define BOM_TIME 120
 #define GHO_TIME 500
+#define POW_TIME 500
 #define MET_W RESOLUTION*2
 #define MET_H RESOLUTION*2
 /*#define BOX_H RESOLUTION*2
@@ -77,6 +79,8 @@ GameObject penguin(int id, int control, double x, double y, Color c) {
 	p.marked=-1;
 	p.score=0;
 	p.no_leave_screen=true;
+	p.pow=NONE;
+	p.timer=0;
 	return p;
 }
 GameObject penguin_from_ghost(int id, GameObject* g) {
@@ -102,6 +106,8 @@ GameObject penguin_from_ghost(int id, GameObject* g) {
 	p.marked=-1;
 	p.score=g->score;
 	p.no_leave_screen=true;
+	p.pow=NONE;
+	p.timer=0;
 	return p;
 }
 
@@ -192,6 +198,28 @@ GameObject bonusbox(int id, double x, double y){
 	o.yspeed=0;
 	o.solid=true;
 	o.color=color(200+rand()%30,100+rand()%10,100+rand()%10);
+	o.explodable=true;
+	o.effect=false;
+	o.floats=true;
+	o.marked=-1;
+	o.score=0;
+	o.no_leave_screen=false;
+	return o;
+}
+GameObject powerbox(int id, double x, double y){
+	GameObject o;
+	o.id=id;
+	o.classid=POW_ID;
+	o.x=x;
+	o.y=y;
+	o.width=BOX_W;
+	o.height=BOX_H;
+	o.will_destroy=false;
+	o.on_ground=false;
+	o.xspeed=0;
+	o.yspeed=0;
+	o.solid=true;
+	o.color=color(200+rand()%30,150+rand()%10,120+rand()%10);
 	o.explodable=true;
 	o.effect=false;
 	o.floats=true;
@@ -484,6 +512,28 @@ double resolve_down(ObjectList* objects, GameObject* go){
 	//printf("%f\n",go->y-old);
 	return go->y-old;
 }
+
+void add_powerup(GameObject* go){
+	int which=rand()%2;
+	switch (which){
+		case (0): 
+			go->floats=true;
+			go->pow=go->pow | SAFE_WATER;
+			break;
+		case (1):
+			go->explodable=false;
+			go->pow=go->pow | SAFE_EXPLODE;
+			break;
+	}
+	go->timer=POW_TIME;
+}
+
+void reset_powerups(GameObject* go){
+	go->floats=false;
+	go->explodable=false;
+	go->pow=NONE;
+}
+
 void step_object(ObjectList* objects, GameObject* go, double time){
 	GameObject* other; //Useful in cases of collisions
 	double offset;
@@ -504,7 +554,7 @@ void step_object(ObjectList* objects, GameObject* go, double time){
 		if (go->x+go->width > 512) go->x=512-go->width;
 		if (go->y+go->height > 500) go->y=500-go->height;
 	}
-	
+
 	switch (go->classid){
 		case (PEN_ID):
 
@@ -518,8 +568,15 @@ void step_object(ObjectList* objects, GameObject* go, double time){
 					else {
 						go->ducking=true;
 						go->height=RESOLUTION;
+						double sy=go->y;
 						resolve_down(objects,go);
-						go->yspeed=4+abs(go->yspeed)/2*time;
+						if (go->y-sy>32){
+							go->y=sy;
+							resolve_up(objects,go);
+						}
+						else{
+							go->yspeed=4+abs(go->yspeed)/2*time;
+						}
 					}
 				}
 				else {
@@ -593,16 +650,26 @@ void step_object(ObjectList* objects, GameObject* go, double time){
 					other->marked=go->id;
 					other->color=go->color;
 					if (other->classid==BON_ID) other->score+=2;
-//					Color c=other->color;
-//					other->color=color(255-.6*(255-c.red),255-.6*(255-c.green),255-.6*(255-c.blue));
-					
+					//					Color c=other->color;
+					//					other->color=color(255-.6*(255-c.red),255-.6*(255-c.green),255-.6*(255-c.blue));
+
 				}
 			}
-			
+
 			//Drip effect
 			if (rand()%20==0){
 				add_object(objects, drip(objects->size,go->color,go->x+(rand()%go->width),go->y+(rand()%go->height)));
 			}
+
+			//POwerup timer
+			if (go->timer>0){
+				go->timer-=time;
+				if (go->timer<=0){
+					reset_powerups(go);
+					go->timer=0;
+				}
+			}
+
 
 			break;
 		case (GHO_ID):
@@ -637,6 +704,7 @@ void step_object(ObjectList* objects, GameObject* go, double time){
 			break;
 		case (BOX_ID):
 		case (BON_ID):
+		case (POW_ID):
 			go->y+=BOX_FALL*time;
 			go->on_ground=(resolve_up(objects, go)!=0);
 			break;
@@ -667,7 +735,7 @@ void step_object(ObjectList* objects, GameObject* go, double time){
 			for (int i=0; i<objects->size; i++){
 				other=get_object(objects,i);
 				if (other->explodable && is_touching(go,other)){
-			//		other=get_object(objects,i);
+					//		other=get_object(objects,i);
 					other->will_destroy=true;
 					if (other->classid==BOM_ID || other->classid==BOX_ID){
 						add_object(objects,metal(objects->size,other->x,other->y));//New object shoud wait to be processed.
@@ -691,6 +759,7 @@ void step_object(ObjectList* objects, GameObject* go, double time){
 			if (is_touching(go,get_object(objects,1)) || is_touching(go,get_object(objects,2))){ //TODO better check
 				go->yspeed=0.1;
 			}
+			//	if (is_touching_solid(objects,go)) go->will_destroy=true;
 			go->y+=go->yspeed;
 			break;
 		case (NUM_ID):
@@ -711,15 +780,32 @@ void draw_outlined_rect(Color c1, Color c2, int x, int y, int w, int h){
 void draw_object(ObjectList* objects, GameObject* go){
 	int x=(int)go->x;
 	int y=(int)go->y;
-	int w=go->width;
-	int h=go->height;
+	int w=go->width-1;
+	int h=go->height-1;
 	int height;
 	switch (go->classid){
-		case (PEN_ID):
-		case (BOX_ID):
 		case (EXP_ID):
 		case (MIS_ID):
 		case (SPL_ID):
+			fillRect(color(0,0,0),(int)go->x,(int)go->y,go->width,go->height);
+			fillRect(go->color,(int)go->x+1,(int)go->y+1,go->width-2,go->height-2);
+			break;
+		case (PEN_ID):
+			fillRect(color(0,0,0),(int)go->x,(int)go->y,go->width,go->height);
+			fillRect(go->color,(int)go->x+1,(int)go->y+1,go->width-2,go->height-2);
+			if (go->timer!=0){
+				height=(int)((go->height-4)*(go->timer/POW_TIME));
+				fillRect(color(20,100,20),x+12,y+h-height-2,3,height);
+			}
+			if (go->pow & SAFE_EXPLODE){
+				outlineRect(color(0,0,0),x+2,y+2,w-4,h-4);
+			}
+			if (go->pow & SAFE_WATER){
+				outlineRect(color(0,0,0),x-2,y+h-8,w+4,10);
+				outlineRect(color(0,0,0),x+2,y+2,w-4,h-4);
+			}
+			break;
+		case (BOX_ID):
 			fillRect(color(0,0,0),(int)go->x,(int)go->y,go->width,go->height);
 			fillRect(go->color,(int)go->x+1,(int)go->y+1,go->width-2,go->height-2);
 			break;
@@ -773,7 +859,14 @@ void draw_object(ObjectList* objects, GameObject* go){
 			drawNum(color(0,0,0),(int)go->score,x+3,y+3,w/2-5,h-6);
 			drawNum(color(0,255,0),(int)go->score,x+2,y+2,w/2-5,h-6);
 			break;
-			
+		case (POW_ID):
+			fillRect(color(0,0,0),(int)go->x,(int)go->y,go->width,go->height);
+			fillRect(go->color,(int)go->x+1,(int)go->y+1,go->width-2,go->height-2);
+			drawLine(color(0,0,0),x,y+10,x+10,y);
+			drawLine(color(0,0,0),x,y+h-10,x+10,y+h);
+			drawLine(color(0,0,0),x+w,y+h-10,x+w-10,y+h);
+			drawLine(color(0,0,0),x+w-10,y,x+w,y+10);
+			break;
 	}
 }
 void destroy_object(ObjectList* objects, GameObject* go){
@@ -790,6 +883,10 @@ void destroy_object(ObjectList* objects, GameObject* go){
 			break;
 		case (BOM_ID):
 			add_object(objects, explosion(objects->size,go->x+go->width/2,go->y+go->height/2,32));
+		case (POW_ID):
+			if (go->marked>-1 && get_object(objects,go->marked)->classid==PEN_ID){
+				add_powerup(get_object(objects,go->marked));
+			}
 		case (BON_ID):
 		case (BOX_ID):
 			for (int i=0;i<5;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));

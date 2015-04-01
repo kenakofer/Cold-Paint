@@ -33,6 +33,7 @@ void render_graphics();
 
 void fillRect(Color c, int x, int y, int width, int height); 
 void outlineRect(Color c, int x, int y, int width, int height);
+void drawLine(Color c, int x1, int y1, int x2, int y2);
 
 void drawNum(Color c, int n, int x, int y, int w, int h);
 

@@ -13,8 +13,8 @@
 #define WINDOW_HEIGHT 500
 
 #define FPS 60
-#define GAME_SPEED .85
-#define DIFFICULTY .5
+#define GAME_SPEED 1
+#define DIFFICULTY 1
 
 ObjectList objects;
 
@@ -55,6 +55,11 @@ void gamethread(){
 		}
 		if (rand()%(int)(200/time/difficulty)==0){
 			o=bonusbox(objects.size,round(rand()%(WINDOW_WIDTH-32)/16.0)*16,-32);
+			if (is_touching_solid(&objects,&o)->classid==-1)
+				add_object(&objects, o);
+		}
+		if (rand()%(int)(200/time/difficulty)==0){
+			o=powerbox(objects.size,round(rand()%(WINDOW_WIDTH-32)/16.0)*16,-32);
 			if (is_touching_solid(&objects,&o)->classid==-1)
 				add_object(&objects, o);
 		}
