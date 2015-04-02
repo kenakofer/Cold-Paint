@@ -4,7 +4,10 @@
 #include "graphics.h"
 #include <stdbool.h>
 
-typedef enum {NONE=0, SAFE_WATER=1, SAFE_EXPLODE=1<<1, FLY=1<<2, BOX_COLOR=1<<3, METALIZE=1<<4, BOMBIZE=1<<5} powerups;
+typedef enum {NONE=0, SAFE_WATER=1, SAFE_EXPLODE=1<<1, FLY=1<<2, BOX_COLOR=1<<3, METALIZE=1<<4, BOMBIZE=1<<5, IS_SOLID=1<<6} powerups;
+
+typedef enum {NULL_ID=0,PEN_ID,BOX_ID,BOM_ID,MET_ID,WAT_ID,EXP_ID,SPL_ID,CRA_ID,MIS_ID,DRI_ID,GHO_ID,NUM_ID,BON_ID,POW_ID} classids;
+
 
 typedef struct {
 	int id;
@@ -42,6 +45,32 @@ typedef struct {
 	int capacity;
 } ObjectList;
 
+typedef struct {
+	int width;			//of window
+	int height;
+	int resolution;		//how wide/tall are the cells
+	Color background;
+
+	double pen_jump;
+	double pen_move;
+	double difficulty;
+	double game_speed;
+	double FPS;
+	double gravity;
+	double box_fall;
+
+	double bomb_time;
+	double ghost_time;
+	double powerup_time;
+
+	int step;
+
+	ObjectList objects;
+
+} GameProperties;
+
+void start_game(GameProperties * gp);
+
 //Constructors
 GameObject penguin(int id, int control, double x, double y, Color c);
 GameObject bomb(int id, double x, double y);
@@ -56,9 +85,15 @@ GameObject bonusbox(int id, double x, double y);
 GameObject powerbox(int id, double x, double y);
 GameObject* null();
 
+
+
+void start_game(GameProperties * gp);
+
+bool probably_add_object(ObjectList* objects, double probability, GameObject (*f)(int i, double j, double k));
+
 int sign(double a);
 //Performs the changes to a game object as they would happen in <time> amount of time. The time parameter allows easy speeding and slowing of the game.
-void step_object(ObjectList* objects, GameObject* go, double time);
+void step_object(ObjectList* objects, GameObject* go);
 
 void destroy_object(ObjectList* objects, GameObject* go);
 
