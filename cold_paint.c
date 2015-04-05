@@ -9,9 +9,6 @@
 #include "objects.h"
 #include "objectlist.h"
 
-
-
-
 void init_game(GameProperties * game) {
 	game->width=		512;
 	game->height=		500;
@@ -20,8 +17,8 @@ void init_game(GameProperties * game) {
 
 	game->pen_jump=		-10.0;
 	game->pen_move=		3.02;
-	game->difficulty=	1.0;
-	game->game_speed=	1.0;
+	game->difficulty=	2;
+	game->game_speed=	1.3;
 	game->FPS=			60.0;
 	game->gravity=		0.35;
 	game->box_fall=		2.0;
@@ -40,5 +37,5 @@ int main( int argc, char *args[]){
 	init_game(&game);
 	srand(0);
 	start_game(&game);
-//	obliterate_graphics();
+	obliterate_graphics();
 }

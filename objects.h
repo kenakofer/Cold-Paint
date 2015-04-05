@@ -6,7 +6,7 @@
 
 typedef enum {NONE=0, SAFE_WATER=1, SAFE_EXPLODE=1<<1, FLY=1<<2, BOX_COLOR=1<<3, METALIZE=1<<4, BOMBIZE=1<<5, IS_SOLID=1<<6} powerups;
 
-typedef enum {NULL_ID=0,PEN_ID,BOX_ID,BOM_ID,MET_ID,WAT_ID,EXP_ID,SPL_ID,CRA_ID,MIS_ID,DRI_ID,GHO_ID,NUM_ID,BON_ID,POW_ID} classids;
+typedef enum {NULL_ID=0,PEN_ID,BOX_ID,BOM_ID,MET_ID,WAT_ID,EXP_ID,SPL_ID,CRA_ID,MIS_ID,DRI_ID,GHO_ID,NUM_ID,BON_ID,POW_ID,SMA_ID} classids;
 
 
 typedef struct {
@@ -75,6 +75,7 @@ void start_game(GameProperties * gp);
 GameObject penguin(int id, int control, double x, double y, Color c);
 GameObject bomb(int id, double x, double y);
 GameObject box(int id, double x, double y);
+GameObject smallbox(int id, double x, double y);
 GameObject metal(int id, double x, double y);
 GameObject water(int id, double x, double y);
 GameObject explosion(int id, double x, double y, int radius);

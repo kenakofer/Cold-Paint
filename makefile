@@ -1,8 +1,8 @@
 CC=gcc
 CFLAGS=-std=c99 -lSDL2 -lm -g
 
-cold_waters: c_waters.c objects.o objectlist.o events.o graphics.o
-	$(CC) -o cold_waters c_waters.c objects.c objectlist.c events.c graphics.c $(CFLAGS)
+cold_paint: cold_paint.c objects.o objectlist.o events.o graphics.o
+	$(CC) -o cold_paint cold_paint.c objects.c objectlist.c events.c graphics.c $(CFLAGS)
 objects.o: objects.c objectlist.o events.o graphics.o
 	$(CC) -c objects.c $(CFLAGS)
 objectlist.o: objectlist.c

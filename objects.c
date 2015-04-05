@@ -20,16 +20,18 @@ void gamethread(){
 		//rain stuff
 		double factor = game->game_speed * game->difficulty;
 		probably_add_object(objects,1/30.0/factor, bomb);
-		probably_add_object(objects,1/200.0/factor, bonusbox);
-		probably_add_object(objects,1/200.0/factor, powerbox);
+		probably_add_object(objects,1/1000.0/factor, bonusbox);
+		if (!object_count(objects,POW_ID))
+			probably_add_object(objects,1/200.0/factor, powerbox);
 		probably_add_object(objects,1/20.0/factor, box);
+		probably_add_object(objects,1/200.0/factor, smallbox);
 		probably_add_object(objects,1/100.0/factor, metal);
 		probably_add_object(objects,1/140.0/factor, missile);
 
 		//Crawlers
 		int prob=(int)(pow(145-objects->size,1.82)*game->game_speed);
 		if (prob<50) prob=50;
-		if (rand()%prob==0 && object_count(objects, CRA_ID)==0){
+		if (rand()%prob==0 && object_count(objects,CRA_ID)==0){
 			o=crawler(objects->size,0,468);
 			add_object(objects, o);
 		}
@@ -219,6 +221,14 @@ GameObject box(int id, double x, double y){
 	o.no_leave_screen=false;
 	return o;
 }
+GameObject smallbox(int id, double x, double y){
+	GameObject go=box(id,x,y);
+	go.classid=SMA_ID;
+	go.width=game->resolution;
+	go.height=game->resolution;
+	return go;
+}
+
 GameObject bonusbox(int id, double x, double y){
 	GameObject o;
 	o.id=id;
@@ -464,6 +474,13 @@ bool is_touching(GameObject* go1, GameObject* go2){
 	}
 	return false;
 }
+bool is_touching_class(GameObject* go, int obj_id){
+	for (int i=0;i<objects->size;i++){
+		GameObject* other=get_object(objects,i);
+		if (other->classid==obj_id && is_touching(go,other)) return true;
+	}
+	return false;
+}
 
 bool is_neighboring(GameObject * go1, GameObject* go2){
 	GameObject bigger = *go1;
@@ -588,7 +605,7 @@ void add_powerup(GameObject* go){
 
 void reset_powerups(GameObject* go){
 	go->floats=false;
-	go->explodable=false;
+	go->explodable=true;
 	go->solid=false;
 	go->pow=NONE;
 }
@@ -662,7 +679,8 @@ void step_object(ObjectList* objects, GameObject* go){
 				}
 
 			}
-			if (up(go) && go->on_ground) {
+			//if (up(go) && go->on_ground) {
+			if (up(go) && (go->on_ground || is_touching_class(go,MIS_ID))) {
 				go->yspeed=game->pen_jump;
 				go->on_ground=false;
 			}
@@ -676,7 +694,6 @@ void step_object(ObjectList* objects, GameObject* go){
 				double sy=go->y;
 				double r = resolve_up(objects,go);
 				if (r>16){
-					//printf("11\n");
 					go->y=sy;
 					go->height=game->resolution;
 				}
@@ -702,6 +719,8 @@ void step_object(ObjectList* objects, GameObject* go){
 				if (resolve_down(objects, go)!=0) go->yspeed*=-1;
 
 			}
+
+
 
 			//Check to see if the penguin is chillin in the water
 			if (is_touching_water(objects,go)) go->will_destroy=true;
@@ -772,6 +791,7 @@ void step_object(ObjectList* objects, GameObject* go){
 			go->on_ground=(resolve_up(objects, go)!=0);
 			break;
 		case (BOX_ID):
+		case (SMA_ID):
 		case (BON_ID):
 		case (POW_ID):
 			go->y+=game->box_fall/game->game_speed;
@@ -871,6 +891,7 @@ void draw_object(ObjectList* objects, GameObject* go){
 			if (go->pow & IS_SOLID) fillRect(color(180,80,120),x+2,y+10,8,2);
 			break;
 		case (BOX_ID):
+		case (SMA_ID):
 			fillRect(color(0,0,0),x,y,w,h);
 			fillRect(go->color,x+1,y+1,w-2,h-2);
 			break;
@@ -954,8 +975,9 @@ void destroy_object(ObjectList* objects, GameObject* go){
 			if (go->marked>-1 && get_object(objects,go->marked)->classid==PEN_ID){
 				add_powerup(get_object(objects,go->marked));
 			}
-		case (BON_ID):
 		case (BOX_ID):
+		case (BON_ID):
+		case (SMA_ID):
 			for (int i=0;i<5;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));
 			break;
 		case (CRA_ID):
