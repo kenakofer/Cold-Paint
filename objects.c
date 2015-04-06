@@ -10,59 +10,84 @@
 
 GameProperties* game;
 ObjectList* objects;
+int global_timer=0;
+
+void slo_mo(){
+	game->speed=game->slomo_speed;
+	game->slomo_timer=game->slomo_time;
+}
 
 void gamethread(){
-	while (true){
-		GameObject o;
-		GameObject* other;
-		game->step++;
-	
-		//rain stuff
-		double factor = game->game_speed * game->difficulty;
-		probably_add_object(objects,1/30.0/factor, bomb);
-		probably_add_object(objects,1/1000.0/factor, bonusbox);
-		if (!object_count(objects,POW_ID))
-			probably_add_object(objects,1/200.0/factor, powerbox);
-		probably_add_object(objects,1/20.0/factor, box);
-		probably_add_object(objects,1/200.0/factor, smallbox);
-		probably_add_object(objects,1/100.0/factor, metal);
-		probably_add_object(objects,1/140.0/factor, missile);
+	while (true) {
+		int start=SDL_GetTicks();
+		if (!P()){
+			GameObject o;
+			GameObject* other;
+			game->step++;
+		
+			//rain stuff
+			double factor = game->speed * game->difficulty;
+			probably_add_object(1/30.0*factor, bomb);
+			probably_add_object(1/1000.0*factor, bonusbox);
+			if (!object_count(objects, POW_ID))
+				probably_add_object(1/200.0*factor, powerbox);
+			probably_add_object(1/20.0*factor, box);
+			probably_add_object(1/200.0*factor, smallbox);
+			probably_add_object(1/100.0*factor, metal);
+			probably_add_object(1/140.0*factor, missile);
 
-		//Crawlers
-		int prob=(int)(pow(145-objects->size,1.82)*game->game_speed);
-		if (prob<50) prob=50;
-		if (rand()%prob==0 && object_count(objects,CRA_ID)==0){
-			o=crawler(objects->size,0,468);
-			add_object(objects, o);
+			//Crawlers
+			int prob=(int)(pow(145-objects->size,1.82)/game->speed);
+			if (prob<50) prob=50;
+			if (rand()%prob==0 && object_count(objects,CRA_ID)==0){
+				o=crawler(objects->size,0,468);
+				add_object(objects, o);
+			}
+
+
+			int size=objects->size;
+
+			//Slo_mo
+			if (game->slomo_timer>0){
+				game->slomo_timer--;
+			}
+			else{
+				game->slomo_timer=0;
+				if (game->speed < game->normal_speed)
+					game->speed+= 0.1;
+				if (game->speed > game->normal_speed)
+					game->speed = game->normal_speed;
+			}
+
+			//Step
+			for (int i=0;i<size;i++) step_object(get_object(objects,i));
+
+			//Removal
+			for (int i=0;i<objects->size;i++) if (get_object(objects, i)->will_destroy){
+				GameObject go = *get_object(objects, i);
+				remove_index(objects,i);	
+				destroy_object(&go);
+			}
 		}
 
+		//Keyboard events
 		if (handleEvents()==-1) return;
-
-		int size=objects->size;
-
-		//Step
-		for (int i=0;i<size;i++) step_object(objects,get_object(objects,i));
-
-		//Removal
-		for (int i=0;i<objects->size;i++) if (get_object(objects, i)->will_destroy){
-			GameObject go = *get_object(objects, i);
-			remove_index(objects,i);	
-			destroy_object(objects,&go);
-		}
 
 		//Drawing
 		clear_graphics();
 		for (int i=1;i<objects->size;i++) if (!get_object(objects,i)->effect) {
-			draw_object(objects, get_object(objects,i));
+			draw_object(get_object(objects,i));
 		}
 		for (int i=1;i<objects->size;i++) if (get_object(objects,i)->effect){
-			draw_object(objects, get_object(objects,i));
+			draw_object(get_object(objects,i));
 		}
-		draw_object(objects, get_object(objects,0));
+		draw_object(get_object(objects,0));
 		render_graphics();
 
 		//Delay
-		SDL_Delay(1000/game->FPS);
+		int dur=SDL_GetTicks()-start;
+		if (dur<1000/game->FPS) SDL_Delay(1000/game->FPS - dur);
+		else printf("That frame took %i milliseconds!\n",dur);
 	}
 }
 
@@ -77,7 +102,7 @@ void start_game(GameProperties * g){
 	*objects=objectList(200);
 	add_object(objects, water(objects->size,-10,game->height-32));
 	add_object(objects, penguin(objects->size,arrows(),game->width/2,game->height/2,color(255,255,255)));
-	add_object(objects, penguin(objects->size,wasd(),game->width/2,game->height/2,color(0,255,255)));
+//	add_object(objects, penguin(objects->size,wasd(),game->width/2,game->height/2,color(0,255,255)));
 	for (int i=0;i<game->width;i+=32)
 		add_object(objects, box(objects->size,i,game->height-100));
 
@@ -89,6 +114,8 @@ void set_score(GameObject * go,int s){
 }
 void add_score(GameObject * go,int s){
 	go->score+=s;
+	game->difficulty+= .002*s;
+	printf("Difficulty: %f\n",game->difficulty);
 }
 int get_score(GameObject * go){
 	return go->score;
@@ -305,7 +332,7 @@ GameObject water(int id, double x, double y){
 	o.height=1000;
 	o.will_destroy=false;
 	o.on_ground=false;
-	o.color=colora(50,100,255,200);
+	o.color=colora(230,230,230,200);
 	o.xspeed=0;
 	o.yspeed=0;
 	o.solid=false;
@@ -375,6 +402,7 @@ GameObject crawler(int id, double x, double y){
 	o.color=color(50,50,100);
 	o.marked=-1;
 	o.no_leave_screen=false;
+	o.score=5;
 	return o;
 }
 GameObject missile(int id, double x, double y){
@@ -387,13 +415,14 @@ GameObject missile(int id, double x, double y){
 	o.height=25;
 	o.will_destroy=false;
 	o.on_ground=false;
-	o.yspeed=.5+rand()%10*.1;
+	o.yspeed=1;
 	o.solid=false;
 	o.explodable=true;
 	o.effect=false;
 	o.color=color(0,0,0);
 	o.marked=-1;
 	o.no_leave_screen=false;
+	o.score=5;
 	return o;
 }
 GameObject drip(int id, Color c, double x, double y){
@@ -439,6 +468,32 @@ GameObject number(int id, int n, Color c, double x, double y){
 	return o;
 
 }
+GameObject wipeout(int id, double x, double y){
+	GameObject o;
+	o.id=id;
+	o.classid=WIP_ID;
+	if (rand()%2==0){
+		o.x=0;
+		o.xspeed=.5;
+	} else {
+		o.x=game->width;
+		o.xspeed=-.5;
+	}
+	o.y=0;
+	o.width=1;
+	o.height=1000;
+	o.will_destroy=false;
+	o.on_ground=false;
+	o.solid=false;
+	o.explodable=false;
+	o.effect=true;
+	o.color=color(255,0,0);
+	o.marked=-1;
+	o.no_leave_screen=false;
+	o.score=0;
+	return o;
+
+}
 
 GameObject null_object;
 GameObject* null(){
@@ -446,10 +501,10 @@ GameObject* null(){
 	return &null_object;
 }
 
-bool probably_add_object(ObjectList* objects, double probability, GameObject (*f)(int i, double j, double k)){
+bool probably_add_object( double probability, GameObject (*f)(int i, double j, double k)){
 	if (rand()%100000<probability*100000){
 		GameObject o= f(objects->size,round(rand()%(game->width-32)/16.0)*16,-32);
-		if (is_touching_solid(objects,&o)->classid==NULL_ID)
+		if (is_touching_solid(&o)->classid==NULL_ID)
 			add_object(objects, o);
 			return true;
 	}
@@ -474,12 +529,12 @@ bool is_touching(GameObject* go1, GameObject* go2){
 	}
 	return false;
 }
-bool is_touching_class(GameObject* go, int obj_id){
+GameObject* is_touching_class(GameObject* go, int obj_id){
 	for (int i=0;i<objects->size;i++){
 		GameObject* other=get_object(objects,i);
-		if (other->classid==obj_id && is_touching(go,other)) return true;
+		if (other->classid==obj_id && is_touching(go,other)) return other;
 	}
-	return false;
+	return null();
 }
 
 bool is_neighboring(GameObject * go1, GameObject* go2){
@@ -491,7 +546,7 @@ bool is_neighboring(GameObject * go1, GameObject* go2){
 	return is_touching(&bigger, go2);
 }
 
-GameObject* is_touching_solid(ObjectList* objects, GameObject* go){
+GameObject* is_touching_solid(GameObject* go){
 	for (int i=0;i<objects->size;i++){
 		GameObject* other=get_object(objects,i);
 		if (is_touching(go,other) && (other->solid || (go->floats && other->classid==WAT_ID)
@@ -501,14 +556,14 @@ GameObject* is_touching_solid(ObjectList* objects, GameObject* go){
 	}
 	return null();
 }
-GameObject* is_touching_any(ObjectList* objects, GameObject* go){
+GameObject* is_touching_any(GameObject* go){
 	for (int i=0;i<objects->size;i++){
 		GameObject* other=get_object(objects,i);
 		if (!other->effect && is_touching(go,other)) return other;
 	}
 	return null();
 }
-bool is_touching_penguin(ObjectList* objects, GameObject* go){
+bool is_touching_penguin(GameObject* go){
 	int i=1;
 	GameObject * other;
 	while ((other=get_object(objects,i))->classid==PEN_ID || other->classid==GHO_ID){
@@ -516,57 +571,57 @@ bool is_touching_penguin(ObjectList* objects, GameObject* go){
 	}
 	return false;
 }
-bool is_touching_water(ObjectList* objects, GameObject* go){
+bool is_touching_water(GameObject* go){
 	return(is_touching(go,get_object(objects,0)));
 }
-bool is_on_ground(ObjectList* objects, GameObject* go){
+bool is_on_ground(GameObject* go){
 	bool result;
 	GameObject o=*go;
 	o.y=go->y+go->height;
 	o.height=1;
-	result=is_touching_solid(objects, &o)->classid!=NULL_ID;
+	result=is_touching_solid(&o)->classid!=NULL_ID;
 	return result;
 }
-bool is_on_water(ObjectList* objects, GameObject* go){
+bool is_on_water(GameObject* go){
 	bool result;
 	go->y++;
-	result=is_touching_water(objects, go);
+	result=is_touching_water(go);
 	go->y--;
 	return result;
 }
 
-double settle_down(ObjectList* objects, GameObject* go){
+double settle_down(GameObject* go){
 	GameObject* other;
 	GameObject o=*go;
 	o.y=go->y+go->height;
 	o.height=1;
-	other=is_touching_solid(objects, &o);
+	other=is_touching_solid(&o);
 	go->y=other->y-go->height;
 }
 
 
-double resolve_left(ObjectList* objects, GameObject* go){
+double resolve_left(GameObject* go){
 	GameObject* other;
 	double old=go->x;
-	while ((other=is_touching_solid(objects,go))->classid!=NULL_ID){
+	while ((other=is_touching_solid(go))->classid!=NULL_ID){
 		go->x=other->x-go->width;
 	}
 	//printf("%f\n",old-go->x);
 	return old-go->x;
 }
-double resolve_right(ObjectList* objects, GameObject* go){
+double resolve_right(GameObject* go){
 	GameObject* other;
 	double old=go->x;
-	while ((other=is_touching_solid(objects,go))->classid!=NULL_ID){
+	while ((other=is_touching_solid(go))->classid!=NULL_ID){
 		go->x=other->x+other->width;
 	}
 	//printf("%f\n",go->x-old);
 	return go->x-old;
 }
-double resolve_up(ObjectList* objects, GameObject* go){
+double resolve_up(GameObject* go){
 	GameObject* other;
 	double old=go->y;
-	while ((other=is_touching_solid(objects,go))->classid!=NULL_ID){
+	while ((other=is_touching_solid(go))->classid!=NULL_ID){
 		if (go->y!=other->y-go->height)
 			go->y=other->y-go->height;
 		else go->y--;
@@ -574,14 +629,20 @@ double resolve_up(ObjectList* objects, GameObject* go){
 	//printf("%f\n",old-go->y);
 	return old-go->y;
 }
-double resolve_down(ObjectList* objects, GameObject* go){
+double resolve_down(GameObject* go){
 	GameObject* other;
 	double old=go->y;
-	while ((other=is_touching_solid(objects,go))->classid!=NULL_ID){
+	while ((other=is_touching_solid(go))->classid!=NULL_ID){
 		go->y=other->y+other->height;
 	}
 	//printf("%f\n",go->y-old);
 	return go->y-old;
+}
+
+void add_negative(){
+	if (rand()%1==0){
+			add_object(objects, wipeout(objects->size,0,0));//New object shoud wait to be processed.
+	}
 }
 
 void add_powerup(GameObject* go){
@@ -610,7 +671,7 @@ void reset_powerups(GameObject* go){
 	go->pow=NONE;
 }
 
-void step_object(ObjectList* objects, GameObject* go){
+void step_object(GameObject* go){
 	GameObject* other; //Useful in cases of collisions
 	double offset;
 	bool old;
@@ -631,12 +692,13 @@ void step_object(ObjectList* objects, GameObject* go){
 		if (go->y+go->height > 500) go->y=500-go->height;
 	}
 
+
 	switch (go->classid){
 		case (PEN_ID):
 
 			//Check for initial collisions, which would indicate that some other object moved onto the penguin, from above
-			if (is_touching_solid(objects,go)->classid!=NULL_ID){
-				if (is_on_ground(objects, go)){
+			if (is_touching_solid(go)->classid!=NULL_ID){
+				if (is_on_ground(go)){
 					if (go->ducking) {
 						go->will_destroy=true;
 						return;
@@ -645,68 +707,28 @@ void step_object(ObjectList* objects, GameObject* go){
 						go->ducking=true;
 						go->height=game->resolution;
 						double sy=go->y;
-						resolve_down(objects,go);
+						resolve_down(go);
 						if (go->y-sy>32){
 							go->y=sy;
-							resolve_up(objects,go);
+							resolve_up(go);
 						}
 						else{
-							go->yspeed=4+abs(go->yspeed)/2/game->game_speed;
+							go->yspeed=4+abs(go->yspeed)/2*game->speed;
 						}
 					}
 				}
 				else {
-					resolve_down(objects, go);
+					resolve_down(go);
 				}
-			}
-			if (left(go) && is_touching_solid(objects,go)->classid==NULL_ID) {
-				go->x-=game->pen_move/game->game_speed;
-				resolve_right(objects, go);
-			}
-			if (right(go) && is_touching_solid(objects,go)->classid==NULL_ID) {
-				go->x+=game->pen_move/game->game_speed;
-				resolve_left(objects, go);
-			}
-			if (!left(go) && !right(go) && fmod(round(go->x),8)!=0){
-				go->x=round(go->x);
-				if (fmod(go->x,8.0)<4) {
-					go->x--;
-					resolve_right(objects,go);
-				}
-				else {
-					go->x++;
-					resolve_left(objects,go);
-				}
-
-			}
-			//if (up(go) && go->on_ground) {
-			if (up(go) && (go->on_ground || is_touching_class(go,MIS_ID))) {
-				go->yspeed=game->pen_jump;
-				go->on_ground=false;
-			}
-			if (down(go)) {
-				go->ducking=true;
-				go->height=game->resolution;
-			}
-			else if (go->ducking) {
-				//Handles standing up from a duck
-				go->height=game->resolution*2;
-				double sy=go->y;
-				double r = resolve_up(objects,go);
-				if (r>16){
-					go->y=sy;
-					go->height=game->resolution;
-				}
-				else go->ducking=false;
 			}
 
 			//Gravity and vertical speed enaction
-			go->yspeed+=game->gravity/game->game_speed;
-			go->y+=go->yspeed/game->game_speed;
+			go->yspeed+=game->gravity*game->speed;
+			go->y+=go->yspeed*game->speed;
 			//Moving down...
 			if (go->yspeed>0) {
 				double sy=go->y;
-				go->on_ground=(resolve_up(objects, go));
+				go->on_ground=(resolve_up(go));
 				if (sy-go->y>16) {
 					go->y=sy;
 					//printf("22\n");
@@ -715,15 +737,69 @@ void step_object(ObjectList* objects, GameObject* go){
 				if (go->on_ground) go->yspeed=0;
 			}
 			else {
-				if (!up(go)) go->yspeed*=.9;
-				if (resolve_down(objects, go)!=0) go->yspeed*=-1;
+				if (!up(go)) go->yspeed*=.94;
+				if (resolve_down(go)!=0) go->yspeed*=-1;
 
 			}
 
+			//Ninja jump off missile
+			if (up(go) && (other=is_touching_class(go,MIS_ID))->classid!=NULL_ID){
+				printf("Got it!\n");
+				go->yspeed = game->pen_jump;
+				go->y+= go->yspeed-5;
+				if (!is_touching(go,other)){
 
+					other->yspeed += 16;
+					other->marked = go->id;
+					other->color = vary(go->color,100);
+
+					slo_mo();
+				}
+			}
+
+			//Controls
+			if (down(go)) {
+				go->ducking=true;
+				go->height=game->resolution;
+			}
+			else if (go->ducking) {
+				//Handles standing up from a duck
+				go->height=game->resolution*2;
+				double sy=go->y;
+				double r = resolve_up(go);
+				if (r>16){
+					go->y=sy;
+					go->height=game->resolution;
+				}
+				else go->ducking=false;
+			}
+			if (left(go) && is_touching_solid(go)->classid==NULL_ID) {
+				go->x-=game->pen_move*game->speed;
+				resolve_right(go);
+			}
+			if (right(go) && is_touching_solid(go)->classid==NULL_ID) {
+				go->x+=game->pen_move*game->speed;
+				resolve_left(go);
+			}
+			if (!left(go) && !right(go) && fmod(round(go->x),8)!=0){
+				go->x=round(go->x);
+				if (fmod(go->x,8.0)<4) {
+					go->x--;
+					resolve_right(go);
+				}
+				else {
+					go->x++;
+					resolve_left(go);
+				}
+
+			}
+			if (up(go) && go->on_ground) {
+				go->yspeed=game->pen_jump;
+				go->on_ground=false;
+			}			
 
 			//Check to see if the penguin is chillin in the water
-			if (is_touching_water(objects,go)) go->will_destroy=true;
+			if (is_touching_water(go)) go->will_destroy=true;
 
 			//Check for touching boxes
 			for (int i=0;i<objects->size;i++){
@@ -736,7 +812,7 @@ void step_object(ObjectList* objects, GameObject* go){
 
 
 					other->marked=go->id;
-					other->color=go->color;
+					other->color=lighten(go->color,-20-(rand()%15));
 					if (other->classid==BON_ID) other->score+=2;
 					//					Color c=other->color;
 					//					other->color=color(255-.6*(255-c.red),255-.6*(255-c.green),255-.6*(255-c.blue));
@@ -745,13 +821,13 @@ void step_object(ObjectList* objects, GameObject* go){
 			}
 
 			//Drip effect
-			if (rand()%(int)(20*game->game_speed+2)==0){
-				add_object(objects, drip(objects->size,go->color,go->x+(rand()%go->width),go->y+(rand()%go->height)));
+			if (rand()%(int)(20/game->speed+2)==0){
+				add_object(objects, drip(objects->size,lighten(go->color,-50),go->x+(rand()%go->width),go->y+(rand()%go->height)));
 			}
 
 			//POwerup timer
 			if (go->timer>0){
-				go->timer-=1/game->game_speed;
+				go->timer-=1*game->speed;
 				if (go->timer<=0){
 					reset_powerups(go);
 					go->timer=0;
@@ -761,23 +837,23 @@ void step_object(ObjectList* objects, GameObject* go){
 
 			break;
 		case (GHO_ID):
-			if (up(go)) go->y-=1/game->game_speed;
-			if (down(go)) go->y+=1/game->game_speed;
-			if (left(go)) go->x-=1/game->game_speed;
-			if (right(go)) go->x+=1/game->game_speed;
+			if (up(go)) go->y-=1*game->speed;
+			if (down(go)) go->y+=1*game->speed;
+			if (left(go)) go->x-=1*game->speed;
+			if (right(go)) go->x+=1*game->speed;
 			//Position rounding
 			if (!left(go) && !right(go) && fmod(round(go->x),8)!=0){
 				go->x=round(go->x);
 				if (fmod(go->x,8.0)<4) go->x-=1;
 				else go->x++;
 			}
-			go->timer-=1/game->game_speed;
+			go->timer-=1*game->speed;
 			if (go->timer<=0) go->will_destroy=true;
 			break;
 
 		case (MET_ID):
-			if (is_touching_water(objects, go))	{
-				go->y+=game->box_fall/game->game_speed*.25;
+			if (is_touching_water(go))	{
+				go->y+=game->box_fall*game->speed*.25;
 				if (go->marked>-1){
 					add_score(get_object(objects, go->marked),go->score);
 					add_object(objects, number(objects->size,go->score,go->color,go->x+go->width/2,go->y+go->height-5));
@@ -787,20 +863,20 @@ void step_object(ObjectList* objects, GameObject* go){
 
 
 			}
-			else go->y+=game->box_fall/game->game_speed;
-			go->on_ground=(resolve_up(objects, go)!=0);
+			else go->y+=game->box_fall*game->speed;
+			go->on_ground=(resolve_up(go)!=0);
 			break;
 		case (BOX_ID):
 		case (SMA_ID):
 		case (BON_ID):
 		case (POW_ID):
-			go->y+=game->box_fall/game->game_speed;
-			go->on_ground=(resolve_up(objects, go)!=0);
+			go->y+=game->box_fall*game->speed;
+			go->on_ground=(resolve_up(go)!=0);
 			break;
 		case (BOM_ID):
-			go->y+=game->box_fall/game->game_speed;
-			go->on_ground=(resolve_up(objects, go)!=0);
-			if (go->on_ground) go->timer-=game->game_speed;
+			go->y+=game->box_fall*game->speed;
+			go->on_ground=(resolve_up(go)!=0);
+			if (go->on_ground) go->timer-=game->speed;
 			if (go->timer<=0) go->will_destroy=true;
 			break;
 		case (EXP_ID):
@@ -812,19 +888,19 @@ void step_object(ObjectList* objects, GameObject* go){
 			}
 			if (go->width<5) go->will_destroy=true;
 			else {
-				go->width-=(int)(6/game->game_speed);
-				go->height-=(int)(6/game->game_speed);
-				go->x+=3/game->game_speed;
-				go->y+=3/game->game_speed;
+				go->width-=(int)(6*game->speed);
+				go->height-=(int)(6*game->speed);
+				go->x+=3*game->speed;
+				go->y+=3*game->speed;
 			}
 
 			break;
 		case (CRA_ID):
-			go->x+=go->xspeed/game->game_speed;
+			go->x+=go->xspeed*game->speed;
 			for (int i=0; i<objects->size; i++){
 				other=get_object(objects,i);
 				if (other->explodable && is_touching(go,other)){
-					//		other=get_object(objects,i);
+					other=get_object(objects,i);
 					other->will_destroy=true;
 					if (other->classid==BOM_ID || other->classid==BOX_ID){
 						add_object(objects,metal(objects->size,other->x,other->y));//New object shoud wait to be processed.
@@ -833,15 +909,28 @@ void step_object(ObjectList* objects, GameObject* go){
 				}
 			}
 			break;
+		case (WIP_ID):
+			go->x+=go->xspeed*game->speed;
+			for (int i=0; i<objects->size; i++){
+				other=get_object(objects,i);
+				if ((other->classid==SMA_ID) && is_touching(other,go)){
+					other->will_destroy=true;
+				}
+				if ((other->classid==BOM_ID || other->classid==BOX_ID || other->classid==BON_ID) && is_touching(other,go)){
+					other->will_destroy=true;
+					add_object(objects,metal(objects->size,other->x,other->y));//New object shoud wait to be processed.
+				}
+			}
+			break;
 		case (MIS_ID):
-			go->y+=go->yspeed/game->game_speed;
-			go->yspeed+=.05/game->game_speed;
-			if (is_touching_any(objects,go)->classid!=NULL_ID) go->will_destroy=true;
+			go->y+=go->yspeed*game->speed;
+			go->yspeed+=.02*game->speed;
+			if (is_touching_any(go)->classid!=NULL_ID) go->will_destroy=true;
 			break;
 		case (SPL_ID):
-			go->x+=go->xspeed/game->game_speed;
-			go->y+=go->yspeed/game->game_speed;
-			go->yspeed+=game->gravity/game->game_speed;
+			go->x+=go->xspeed*game->speed;
+			go->y+=go->yspeed*game->speed;
+			go->yspeed+=game->gravity*game->speed;
 			break;
 		case (DRI_ID):
 			go->yspeed+=game->gravity;
@@ -849,24 +938,24 @@ void step_object(ObjectList* objects, GameObject* go){
 				go->yspeed=0.1;
 			}
 			//	if (is_touching_solid(objects,go)) go->will_destroy=true;
-			go->y+=go->yspeed/game->game_speed;
+			go->y+=go->yspeed*game->speed;
 			break;
 		case (NUM_ID):
-			go->y+=go->yspeed;
-			go->x+=go->xspeed;
-			go->yspeed+=game->gravity/game->game_speed;
+			go->y+=go->yspeed*game->speed;
+			go->x+=go->xspeed*game->speed;
+			go->yspeed+=game->gravity*game->speed*game->speed;
 			break;
 	}
 
 }
 
 void draw_outlined_rect(Color c1, Color c2, int x, int y, int w, int h){
-	fillRect(c1,x,y,w,h);
 	fillRect(c2,x+1,y+1,w-2,h-2);
+	outlineRect(c1,x,y,w,h);
 }
 
 //Draws the gameobject
-void draw_object(ObjectList* objects, GameObject* go){
+void draw_object(GameObject* go){
 	int x=(int)go->x;
 	int y=(int)go->y;
 	int w=go->width;
@@ -876,12 +965,16 @@ void draw_object(ObjectList* objects, GameObject* go){
 		case (EXP_ID):
 		case (MIS_ID):
 		case (SPL_ID):
-			fillRect(color(0,0,0),x,y,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
+		case (BOX_ID):
+		case (SMA_ID):
+		case (CRA_ID):
+			draw_outlined_rect(color(0,0,0),go->color,x,y,w,h);
+			break;
+		case (WIP_ID):
+			drawLine(go->color,x,y,x,game->height);
 			break;
 		case (PEN_ID):
-			fillRect(color(0,0,0),x,y,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
+			draw_outlined_rect(color(0,0,0),go->color,x,y,w,h);
 			if (go->timer!=0){
 				height=(int)((h-4)*(go->timer/game->powerup_time));
 				fillRect(color(20,100,20),x+12,y+h-height-2,3,height);
@@ -890,28 +983,17 @@ void draw_object(ObjectList* objects, GameObject* go){
 			if (go->pow & SAFE_WATER) fillRect(color(0,0,255),x+2,y+6,8,2);
 			if (go->pow & IS_SOLID) fillRect(color(180,80,120),x+2,y+10,8,2);
 			break;
-		case (BOX_ID):
-		case (SMA_ID):
-			fillRect(color(0,0,0),x,y,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
-			break;
 		case (MET_ID):
-			fillRect(color(0,0,0),x,y,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
-			Color c=color(150,200,255);
+			draw_outlined_rect(color(0,0,0),go->color,x,y,w,h);
+			Color c=game->background;
 			Color b=color(0,0,0);
 			draw_outlined_rect(b,c,x+4,y+4,10,10);
 			draw_outlined_rect(b,c,x+18,y+4,10,10);
 			draw_outlined_rect(b,c,x+4,y+18,10,10);
 			draw_outlined_rect(b,c,x+18,y+18,10,10);
 			break;
-		case (CRA_ID):
-			fillRect(color(0,0,0),x,y-rand()%4,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
-			break;
 		case (BOM_ID):
-			fillRect(color(0,0,0),x,y,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
+			draw_outlined_rect(color(0,0,0),go->color,x,y,w,h);
 			fillRect(color(255*(game->bomb_time-go->timer)/game->bomb_time,0,0),x+10,y+10,w-20,h-20);
 			break;
 		case (WAT_ID):
@@ -919,16 +1001,13 @@ void draw_object(ObjectList* objects, GameObject* go){
 			x+=5;
 		 	for (int i=0; i<objects->size; i++){
 				GameObject* go=get_object(objects,i);
+				//drawing scores
 				if (go->classid==PEN_ID || go->classid==GHO_ID){
 					drawNum(color(0,0,0),(int)go->score,x+10,y,16,32);
 					drawNum(go->color,(int)go->score,x+11,y-1,16,32);
 					x+=80;
 				}
 			}
-			break;
-		case (DRI_ID):
-			fillRect(color(0,0,0),x-1,y+1,w,h);
-			fillRect(go->color,x,y,w,h);
 			break;
 		case (GHO_ID):
 			height=(int)(h*((game->ghost_time-go->timer)/game->ghost_time));
@@ -937,28 +1016,39 @@ void draw_object(ObjectList* objects, GameObject* go){
 			break;
 		case (NUM_ID):
 			drawNum(color(0,0,0),(int)go->score,x,y,w,h);
-			drawNum(go->color,(int)go->score,x+1,y+1,w,h);
+			x++;y++;
+			if (go->score>2){
+				drawNum(color(0,255,0),(int)go->score,x,y,w,h);
+				x++; y++;
+			}
+			if (go->score>4){
+				drawNum(color(0,0,0),(int)go->score,x,y,w,h);
+				x++; y++;
+			}
+			drawNum(go->color,(int)go->score,x,y,w,h);
 			break;
 		case (BON_ID):
-			fillRect(color(0,0,0),x,y,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
+			draw_outlined_rect(color(0,0,0),go->color,x,y,w,h);
 			drawNum(color(0,0,0),(int)go->score,x+3,y+3,w/2-5,h-6);
 			drawNum(color(0,255,0),(int)go->score,x+2,y+2,w/2-5,h-6);
 			break;
 		case (POW_ID):
-			fillRect(color(0,0,0),x,y,w,h);
-			fillRect(go->color,x+1,y+1,w-2,h-2);
+			draw_outlined_rect(color(0,0,0),go->color,x,y,w,h);
 			drawLine(color(0,0,0),x,y+10,x+10,y);
 			drawLine(color(0,0,0),x,y+h-11,x+10,y+h-1);
 			drawLine(color(0,0,0),x+w-1,y+h-11,x+w-11,y+h-1);
 			drawLine(color(0,0,0),x+w-11,y,x+w-1,y+10);
 			break;
+		case (DRI_ID):
+			drawLine(color(0,0,0),x-1,y+1,x-1,y+3);
+			drawLine(go->color,x,y,x,y+2);
+			break;
 	}
 }
-void destroy_object(ObjectList* objects, GameObject* go){
+void destroy_object(GameObject* go){
 	
 
-	if (go->solid && go->marked>-1){
+	if (!go->effect && go->marked>-1){
 		add_score(get_object(objects, go->marked),go->score);
 		add_object(objects, number(objects->size,go->score,go->color,go->x+go->width/2,go->y+go->height-5));
 	}
@@ -974,6 +1064,8 @@ void destroy_object(ObjectList* objects, GameObject* go){
 		case (POW_ID):
 			if (go->marked>-1 && get_object(objects,go->marked)->classid==PEN_ID){
 				add_powerup(get_object(objects,go->marked));
+			} else {
+				add_negative();
 			}
 		case (BOX_ID):
 		case (BON_ID):
@@ -986,13 +1078,15 @@ void destroy_object(ObjectList* objects, GameObject* go){
 		case (PEN_ID):
 			//printf("Final score: %i\n",(int)get_score(go));
 			add_object_at_position(objects, ghost(go->id, go),go->id);
-			int diff=-1*(int)go->score/3;
+			game->difficulty*=.9;
+			printf("Difficulty: %f\n",game->difficulty);
+//			int diff=-1*(int)go->score/3;
 			//add_score(go,diff);
-			get_object(objects,go->id)->score+=diff;
-			add_object(objects, number(objects->size,diff,color(255,0,0),go->x+go->width/2,go->y+go->height-5));
+//			get_object(objects,go->id)->score+=diff;
+//			add_object(objects, number(objects->size,diff,color(255,0,0),go->x+go->width/2,go->y+go->height-5));
 
 			//add_object(objects, ghost(objects->size, go));
-			for (int i=0;i<15;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));
+			for (int i=0;i<10;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));
 			break;
 		case (GHO_ID):
 			//printf("Final score: %i\n",(int)get_score(go));

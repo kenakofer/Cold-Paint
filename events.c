@@ -15,6 +15,9 @@ bool A_key;
 bool S_key;
 bool D_key;
 
+bool P_key;
+bool F_key;
+
 int arrows(){
 	return ARROWS;
 }
@@ -38,6 +41,9 @@ bool right(GameObject* go){
 	if (go->control==WASD) return D_key;
 	return right_key;
 }
+
+bool F(){return F_key;}
+bool P(){return P_key;}
 
 int handleEvents(){
 	SDL_Event e;
@@ -72,8 +78,14 @@ int handleEvents(){
 				case 7:
 					D_key=true;
 					break;
+				case 9:
+					F_key=true;
+					break;
+				case 19:
+					P_key=true;
+					break;
 			}
-			//printf("%i\n",e.key.keysym.scancode);
+		//	printf("%i\n",e.key.keysym.scancode);
 		}
 		if (e.type == SDL_KEYUP){
 			switch (e.key.keysym.scancode){
@@ -100,6 +112,12 @@ int handleEvents(){
 					break;
 				case 7:
 					D_key=false;
+					break;
+				case 9:
+					F_key=false;
+					break;
+				case 19:
+					P_key=false;
 					break;
 			}
 		}

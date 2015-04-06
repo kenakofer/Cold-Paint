@@ -41,6 +41,8 @@ void clear_graphics();
 
 Color color(int r, int g, int b);
 Color colora(int r, int g, int b, int a);
+Color vary(Color c, int vary);
+Color lighten(Color c, int vary);
 
 int getKeyB();
 int getKey();

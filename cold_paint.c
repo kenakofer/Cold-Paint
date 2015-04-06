@@ -13,12 +13,11 @@ void init_game(GameProperties * game) {
 	game->width=		512;
 	game->height=		500;
 	game->resolution=	16;		//how wide/tall are the cells
-	game->background=	color(150,200,255);
+	game->background=	color(100,133,200);
 
 	game->pen_jump=		-10.0;
 	game->pen_move=		3.02;
-	game->difficulty=	2;
-	game->game_speed=	1.3;
+	game->difficulty=	.5;
 	game->FPS=			60.0;
 	game->gravity=		0.35;
 	game->box_fall=		2.0;
@@ -28,6 +27,13 @@ void init_game(GameProperties * game) {
 	game->powerup_time=	500;
 
 	game->step=			0;
+
+	game->normal_speed=	.7;
+	game->slomo_speed=	.08;
+	game->speed=		game->normal_speed;
+
+	game->slomo_time=	50;
+	game->slomo_timer=	0;
 
 	game->objects=		objectList(50);
 }

@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include "graphics.h"
+#include <stdlib.h>
 
 static Graphics g;
 
@@ -168,6 +169,37 @@ Color color(int r, int g, int b){
 }
 Color colora(int r, int g, int b, int a){
     return (Color) { (Uint8)r, (Uint8)g, (Uint8)b, (Uint8)a};
+}
+
+Color lighten(Color c, int amount){
+	int r = c.red;
+	int g = c.green;
+	int b = c.blue;
+	r += amount;
+	g += amount;
+	b += amount;
+	if (r>255)r=255;
+	if (g>255)g=255;
+	if (b>255)b=255;
+	if (r<0)r=0;
+	if (g<0)g=0;
+	if (b<0)b=0;
+	return color(r,g,b);
+}
+Color vary(Color c, int amount){
+	int r = c.red;
+	int g = c.green;
+	int b = c.blue;
+	r += rand()%amount - amount/2;
+	g += rand()%amount - amount/2;
+	b += rand()%amount - amount/2;
+	if (r>255)r=255;
+	if (g>255)g=255;
+	if (b>255)b=255;
+	if (r<0)r=0;
+	if (g<0)g=0;
+	if (b<0)b=0;
+	return color(r,g,b);
 }
 
 int getKeyB(){
