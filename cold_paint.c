@@ -1,13 +1,7 @@
 #include <stdio.h>
-#include <time.h>
-#include <stdlib.h> //this is where rand lives
-//#include <stdbool.h>
-//#include <math.h>
-
-//#include "events.h"
-//#include "graphics.h"
 #include "objects.h"
 #include "objectlist.h"
+
 
 void init_game(GameProperties * game) {
 	game->width=		512;
@@ -32,7 +26,7 @@ void init_game(GameProperties * game) {
 	game->slomo_speed=	.08;
 	game->speed=		game->normal_speed;
 
-	game->slomo_time=	50;
+	game->slomo_time=	60;
 	game->slomo_timer=	0;
 
 	game->objects=		objectList(50);
@@ -41,7 +35,7 @@ void init_game(GameProperties * game) {
 int main( int argc, char *args[]){
 	GameProperties game;
 	init_game(&game);
-	srand(0);
+	printf("%i\n",rand());
 	start_game(&game);
 	obliterate_graphics();
 }

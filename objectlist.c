@@ -1,15 +1,7 @@
-#include "objectlist.h"
 
-#include "objects.h"
-
+#include "structs.h"
 #include <stdbool.h>
 
-#define NULL_ID -1
-#define PEN_ID 0
-#define BOX_ID 1
-#define BOM_ID 2
-#define MET_ID 3
-#define WAT_ID 4
 
 ObjectList objectList(int capacity){
 	ObjectList ol;

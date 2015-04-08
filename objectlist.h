@@ -1,7 +1,8 @@
 #ifndef OBJECTLIST
 #define OBJECTLIST
 
-#include "objects.h"
+
+#include "structs.h"
 #include <stdbool.h>
 
 

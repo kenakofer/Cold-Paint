@@ -1,3 +1,4 @@
+#include "structs.h"
 #include "objects.h"
 #include "objectlist.h"
 
@@ -7,10 +8,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+//#define go_in_objects{ (int i=0; i<objects->size; i++){ GameObject* go = get_object(objects, i);
 
 GameProperties* game;
 ObjectList* objects;
 int global_timer=0;
+
 
 void slo_mo(){
 	game->speed=game->slomo_speed;
@@ -54,10 +57,12 @@ void gamethread(){
 			else{
 				game->slomo_timer=0;
 				if (game->speed < game->normal_speed)
-					game->speed+= 0.1;
+					game->speed+= 0.05;
 				if (game->speed > game->normal_speed)
 					game->speed = game->normal_speed;
 			}
+
+			
 
 			//Step
 			for (int i=0;i<size;i++) step_object(get_object(objects,i));
@@ -95,7 +100,6 @@ void start_game(GameProperties * g){
 	game=g;
 	objects=&(g->objects);
 	//Open window
-	printf("%i, %i\n",game->width,game->height);
 	init_graphics(0,0,512,500,game->background);
 
 	//Initial objects
@@ -106,6 +110,7 @@ void start_game(GameProperties * g){
 	for (int i=0;i<game->width;i+=32)
 		add_object(objects, box(objects->size,i,game->height-100));
 
+	srand(0);
 	gamethread();
 }
 
@@ -145,6 +150,7 @@ GameObject penguin(int id, int control, double x, double y, Color c) {
 	p.no_leave_screen=true;
 	p.pow=NONE;
 	p.timer=0;
+	p.blacken=false;
 	return p;
 }
 GameObject penguin_from_ghost(int id, GameObject* g) {
@@ -172,6 +178,7 @@ GameObject penguin_from_ghost(int id, GameObject* g) {
 	p.no_leave_screen=true;
 	p.pow=NONE;
 	p.timer=0;
+	p.blacken=false;
 	return p;
 }
 
@@ -200,6 +207,7 @@ GameObject ghost(int id, GameObject* pen){
 	o.score=pen->score;
 	o.timer=game->ghost_time;
 	o.no_leave_screen=true;
+	o.blacken=false;
 	return o;
 }
 
@@ -224,6 +232,7 @@ GameObject bomb(int id, double x, double y){
 	o.marked=-1;
 	o.score=1;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 }
 GameObject box(int id, double x, double y){
@@ -245,6 +254,7 @@ GameObject box(int id, double x, double y){
 	o.floats=true;
 	o.marked=-1;
 	o.score=1;
+	o.blacken=false;
 	o.no_leave_screen=false;
 	return o;
 }
@@ -276,6 +286,7 @@ GameObject bonusbox(int id, double x, double y){
 	o.marked=-1;
 	o.score=0;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 }
 GameObject powerbox(int id, double x, double y){
@@ -297,7 +308,9 @@ GameObject powerbox(int id, double x, double y){
 	o.floats=true;
 	o.marked=-1;
 	o.score=0;
+	o.pow=rand()%2-3;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 }
 GameObject metal(int id, double x, double y){
@@ -320,6 +333,7 @@ GameObject metal(int id, double x, double y){
 	o.marked=-1;
 	o.score=3;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 }
 GameObject water(int id, double x, double y){
@@ -340,6 +354,7 @@ GameObject water(int id, double x, double y){
 	o.effect=false;
 	o.marked=-1;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 }
 GameObject explosion(int id, double x, double y, int radius){
@@ -360,6 +375,7 @@ GameObject explosion(int id, double x, double y, int radius){
 	o.effect=false;
 	o.marked=-1;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 }
 GameObject splinter(int id, Color c, double x, double y){
@@ -378,10 +394,10 @@ GameObject splinter(int id, Color c, double x, double y){
 	o.solid=false;
 	o.explodable=false;
 	o.effect=true;
-	//o.color=color(150+rand()%80,50+rand()%60,50+rand()%60);
 	o.color=c;
 	o.marked=-1;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 }
 GameObject crawler(int id, double x, double y){
@@ -403,6 +419,7 @@ GameObject crawler(int id, double x, double y){
 	o.marked=-1;
 	o.no_leave_screen=false;
 	o.score=5;
+	o.blacken=false;
 	return o;
 }
 GameObject missile(int id, double x, double y){
@@ -423,6 +440,7 @@ GameObject missile(int id, double x, double y){
 	o.marked=-1;
 	o.no_leave_screen=false;
 	o.score=5;
+	o.blacken=false;
 	return o;
 }
 GameObject drip(int id, Color c, double x, double y){
@@ -442,6 +460,7 @@ GameObject drip(int id, Color c, double x, double y){
 	o.color=c;
 	o.marked=-1;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	return o;
 
 }
@@ -465,6 +484,7 @@ GameObject number(int id, int n, Color c, double x, double y){
 	o.marked=-1;
 	o.no_leave_screen=false;
 	o.score=n;
+	o.blacken=false;
 	return o;
 
 }
@@ -490,6 +510,7 @@ GameObject wipeout(int id, double x, double y){
 	o.color=color(255,0,0);
 	o.marked=-1;
 	o.no_leave_screen=false;
+	o.blacken=false;
 	o.score=0;
 	return o;
 
@@ -514,7 +535,6 @@ bool probably_add_object( double probability, GameObject (*f)(int i, double j, d
 int sign(double a){
 	return (a>=0)*2-1;
 }
-//Returns true if go1!=go2 and the (x,y,width,height) bounds of the two objects overlap.
 bool is_touching(GameObject* go1, GameObject* go2){
 	if (go1->id!=go2->id){
 		double ax1=go1->x;
@@ -606,7 +626,6 @@ double resolve_left(GameObject* go){
 	while ((other=is_touching_solid(go))->classid!=NULL_ID){
 		go->x=other->x-go->width;
 	}
-	//printf("%f\n",old-go->x);
 	return old-go->x;
 }
 double resolve_right(GameObject* go){
@@ -615,7 +634,6 @@ double resolve_right(GameObject* go){
 	while ((other=is_touching_solid(go))->classid!=NULL_ID){
 		go->x=other->x+other->width;
 	}
-	//printf("%f\n",go->x-old);
 	return go->x-old;
 }
 double resolve_up(GameObject* go){
@@ -626,7 +644,6 @@ double resolve_up(GameObject* go){
 			go->y=other->y-go->height;
 		else go->y--;
 	}
-	//printf("%f\n",old-go->y);
 	return old-go->y;
 }
 double resolve_down(GameObject* go){
@@ -635,13 +652,24 @@ double resolve_down(GameObject* go){
 	while ((other=is_touching_solid(go))->classid!=NULL_ID){
 		go->y=other->y+other->height;
 	}
-	//printf("%f\n",go->y-old);
 	return go->y-old;
 }
 
-void add_negative(){
-	if (rand()%1==0){
-			add_object(objects, wipeout(objects->size,0,0));//New object shoud wait to be processed.
+
+
+void add_negative(int which){
+	switch (which){
+		case (WIPEOUT):
+			add_object(objects, wipeout(objects->size,0,0));
+			break;
+		case (BLACKEN):
+			for (int i=0; i<objects->size; i++){ GameObject* go = get_object(objects, i);	
+//			for go_in_objects{ TODO fix
+				if (go->classid!=WAT_ID && go->effect==false)
+					go->blacken=true;
+			}
+			break;
+		
 	}
 }
 
@@ -731,7 +759,6 @@ void step_object(GameObject* go){
 				go->on_ground=(resolve_up(go));
 				if (sy-go->y>16) {
 					go->y=sy;
-					//printf("22\n");
 
 				}
 				if (go->on_ground) go->yspeed=0;
@@ -812,15 +839,14 @@ void step_object(GameObject* go){
 
 
 					other->marked=go->id;
-					other->color=lighten(go->color,-20-(rand()%15));
+					other->color=lighten(go->color,-20-(rand()%15)); //TODO
 					if (other->classid==BON_ID) other->score+=2;
-					//					Color c=other->color;
-					//					other->color=color(255-.6*(255-c.red),255-.6*(255-c.green),255-.6*(255-c.blue));
 
 				}
 			}
 
 			//Drip effect
+			//TODO
 			if (rand()%(int)(20/game->speed+2)==0){
 				add_object(objects, drip(objects->size,lighten(go->color,-50),go->x+(rand()%go->width),go->y+(rand()%go->height)));
 			}
@@ -858,7 +884,7 @@ void step_object(GameObject* go){
 					add_score(get_object(objects, go->marked),go->score);
 					add_object(objects, number(objects->size,go->score,go->color,go->x+go->width/2,go->y+go->height-5));
 					go->marked=-2;
-					go->color=color(150+rand()%30,150+rand()%10,150+rand()%10);
+					go->color=color(150+rand()%30,150+rand()%10,150+rand()%10); //TODO
 				}
 
 
@@ -937,7 +963,6 @@ void step_object(GameObject* go){
 			if (is_touching(go,get_object(objects,1)) || is_touching(go,get_object(objects,2))){ //TODO better check
 				go->yspeed=0.1;
 			}
-			//	if (is_touching_solid(objects,go)) go->will_destroy=true;
 			go->y+=go->yspeed*game->speed;
 			break;
 		case (NUM_ID):
@@ -961,6 +986,11 @@ void draw_object(GameObject* go){
 	int w=go->width;
 	int h=go->height;
 	int height;
+
+	if (go->blacken){
+		fillRect(color(0,0,0),x,y,w,h);	
+	}
+	else
 	switch (go->classid){
 		case (EXP_ID):
 		case (MIS_ID):
@@ -1062,11 +1092,11 @@ void destroy_object(GameObject* go){
 			for (int i=0;i<5;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));
 			break;
 		case (POW_ID):
-			if (go->marked>-1 && get_object(objects,go->marked)->classid==PEN_ID){
+			if (go->marked<=-1){
+				add_negative(go->pow);
+			} else if (get_object(objects,go->marked)->classid==PEN_ID) 
 				add_powerup(get_object(objects,go->marked));
-			} else {
-				add_negative();
-			}
+			
 		case (BOX_ID):
 		case (BON_ID):
 		case (SMA_ID):
@@ -1076,22 +1106,13 @@ void destroy_object(GameObject* go){
 			add_object(objects, explosion(objects->size,go->x+go->width/2,go->y+go->height/2,16));
 			break;
 		case (PEN_ID):
-			//printf("Final score: %i\n",(int)get_score(go));
 			add_object_at_position(objects, ghost(go->id, go),go->id);
 			game->difficulty*=.9;
 			printf("Difficulty: %f\n",game->difficulty);
-//			int diff=-1*(int)go->score/3;
-			//add_score(go,diff);
-//			get_object(objects,go->id)->score+=diff;
-//			add_object(objects, number(objects->size,diff,color(255,0,0),go->x+go->width/2,go->y+go->height-5));
-
-			//add_object(objects, ghost(objects->size, go));
 			for (int i=0;i<10;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));
 			break;
 		case (GHO_ID):
-			//printf("Final score: %i\n",(int)get_score(go));
 			add_object_at_position(objects, penguin_from_ghost(go->id, go), go->id);
-//			add_object(objects, penguin_from_ghost(objects->size, go));
 			break;
 
 	}
