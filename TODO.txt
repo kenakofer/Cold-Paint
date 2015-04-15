@@ -1,0 +1,6 @@
+BUGS
+	fix horizontal alignment
+
+CHANGES
+	make powerup indicators recognizable
+	recording games

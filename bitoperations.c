@@ -1,19 +1,12 @@
 #include "structs.h"
+#include <stdlib.h>
 
-MovementList movementList(int capacity){
+MovementList movementList(int c){
 	MovementList ml;
 	ml.size=0;
-	ml.capacity=capacity;
-	ml.bitarray=(char*)malloc(sizeof(char)*8*ol.capacity/8);
+	ml.capacity=c;
+	ml.bitarray=(char *)malloc(sizeof(char)*8*ml.capacity/8);
 	return ml;
-}
-
-void add_object(ObjectList* ol, GameObject go){
-	if (ol->size >= ol->capacity){
-		ol->capacity*=2;
-		ol->array=(GameObject*)realloc(ol->array,sizeof(GameObject)*ol->capacity);
-	}
-	ol->array[ol->size++]=go;
 }
 
 void setbit(MovementList* ml, int which, bool what){
@@ -21,25 +14,61 @@ void setbit(MovementList* ml, int which, bool what){
 	int byte=which/8;
 	int bit=which-byte*8;
 
-	if (which >= ml->capacity){	
+	while (which >= ml->capacity){	
 		ml->capacity*=2;
-		ml->bitarray=(char*)realloc(ol->bitarray,sizeof(char)*8*ml->capacity);
+		ml->bitarray=(char*)realloc(ml->bitarray,sizeof(char)*8*ml->capacity);
 	}
 	if (what) ml->bitarray[byte]  |= 1<<bit;
 	else ml->bitarray[byte]  &= ~(1<<bit);
-	}
+
+	if (which>=ml->size) ml->size=which+1;
 }
 
-bool getbit(MovementList* ml, bool which){
+bool getbit(MovementList* ml, int which){
 	int byte=which/8;
 	int bit=which-byte*8;
-	return ml->bitarray[byte] & 1<<bit;
+//	printf("%i",ml->bitarray[byte] & 1<<bit);
+	if (ml->bitarray[byte] & 1<<bit) return true;
+	else return false;
 }
 
 
+/*GameProperties read_data(char* filename){
+	GameProperties gp
+}*/
 
-int main( int argc, char *args[]){
+void write_data(char* filename, GameProperties* gp){
+	gp->objects.size=0;
+
+	FILE *f = fopen(filename, "wb");
+	fwrite(gp, sizeof(GameProperties), 1, f);
+	fwrite(gp->movements.bitarray, sizeof(char), gp->movements.size, f);
+	fclose(f);
+}
+
+void read_data(char* filename, GameProperties* gp){
+	FILE *f = fopen(filename, "rb");
+	fread(gp, sizeof(GameProperties), 1, f);
+	gp->movements=movementList(gp->step/8+1);
+	fread(gp->movements.bitarray, sizeof(char), gp->movements.size, f);
+	fclose(f);
+}
+
+/*int main( int argc, char *args[]){
+	srand(0);
 	MovementList ml = movementList(8);
+	for (int i=0;i<100;i++){
+		setbit(&ml, i, !(rand()%2));
+	}
+	for (int i=0;i<ml.capacity;i++){
+		setbit(&ml, i, getbit(&ml,i) && !(rand()%2));
+	}
+	for (int i=0;i<ml.capacity;i++){
+		//printf("%i/n",i);
+		//putchar(getbit(&ml, i));
+		if(getbit(&ml, i)) putchar('1');
+		else putchar('0');
+	}
 
-	printf("%i\n",rand());
-}
+	printf("\n");
+}*/

@@ -1,6 +1,7 @@
 #include "structs.h"
 #include "objects.h"
 #include "objectlist.h"
+#include "bitoperations.h"
 
 #include "graphics.h"
 #include "events.h"
@@ -26,7 +27,6 @@ void gamethread(){
 		if (!P()){
 			GameObject o;
 			GameObject* other;
-			game->step++;
 		
 			//rain stuff
 			double factor = game->speed * game->difficulty;
@@ -77,6 +77,15 @@ void gamethread(){
 
 		//Keyboard events
 		if (handleEvents()==-1) return;
+		if (game->recording) for (int i=0; i<game->pen_num; i++){
+			setbit(&(game->movements), game->movements.size, up(i));
+			setbit(&(game->movements), game->movements.size, down(i));
+			setbit(&(game->movements), game->movements.size, left(i));
+			setbit(&(game->movements), game->movements.size, right(i));
+		}
+		else if (game->replaying){
+			fetch_movements(&(game->movements), game->pen_num, game->step);
+		}
 
 		//Drawing
 		clear_graphics();
@@ -93,6 +102,8 @@ void gamethread(){
 		int dur=SDL_GetTicks()-start;
 		if (dur<1000/game->FPS) SDL_Delay(1000/game->FPS - dur);
 		else printf("That frame took %i milliseconds!\n",dur);
+
+		game->step++;
 	}
 }
 
@@ -112,6 +123,7 @@ void start_game(GameProperties * g){
 
 	srand(0);
 	gamethread();
+	write_data(game->recordfile, game);
 }
 
 void set_score(GameObject * go,int s){
@@ -120,7 +132,7 @@ void set_score(GameObject * go,int s){
 void add_score(GameObject * go,int s){
 	go->score+=s;
 	game->difficulty+= .002*s;
-	printf("Difficulty: %f\n",game->difficulty);
+//	printf("Difficulty: %f\n",game->difficulty);
 }
 int get_score(GameObject * go){
 	return go->score;
@@ -764,13 +776,13 @@ void step_object(GameObject* go){
 				if (go->on_ground) go->yspeed=0;
 			}
 			else {
-				if (!up(go)) go->yspeed*=.94;
+				if (!up(go->control)) go->yspeed*=.94;
 				if (resolve_down(go)!=0) go->yspeed*=-1;
 
 			}
 
 			//Ninja jump off missile
-			if (up(go) && (other=is_touching_class(go,MIS_ID))->classid!=NULL_ID){
+			if (up(go->control) && (other=is_touching_class(go,MIS_ID))->classid!=NULL_ID){
 				printf("Got it!\n");
 				go->yspeed = game->pen_jump;
 				go->y+= go->yspeed-5;
@@ -785,7 +797,7 @@ void step_object(GameObject* go){
 			}
 
 			//Controls
-			if (down(go)) {
+			if (down(go->control)) {
 				go->ducking=true;
 				go->height=game->resolution;
 			}
@@ -800,15 +812,15 @@ void step_object(GameObject* go){
 				}
 				else go->ducking=false;
 			}
-			if (left(go) && is_touching_solid(go)->classid==NULL_ID) {
+			if (left(go->control) && is_touching_solid(go)->classid==NULL_ID) {
 				go->x-=game->pen_move*game->speed;
 				resolve_right(go);
 			}
-			if (right(go) && is_touching_solid(go)->classid==NULL_ID) {
+			if (right(go->control) && is_touching_solid(go)->classid==NULL_ID) {
 				go->x+=game->pen_move*game->speed;
 				resolve_left(go);
 			}
-			if (!left(go) && !right(go) && fmod(round(go->x),8)!=0){
+			if (!left(go->control) && !right(go->control) && fmod(round(go->x),8)!=0){
 				go->x=round(go->x);
 				if (fmod(go->x,8.0)<4) {
 					go->x--;
@@ -820,7 +832,7 @@ void step_object(GameObject* go){
 				}
 
 			}
-			if (up(go) && go->on_ground) {
+			if (up(go->control) && go->on_ground) {
 				go->yspeed=game->pen_jump;
 				go->on_ground=false;
 			}			
@@ -863,12 +875,12 @@ void step_object(GameObject* go){
 
 			break;
 		case (GHO_ID):
-			if (up(go)) go->y-=1*game->speed;
-			if (down(go)) go->y+=1*game->speed;
-			if (left(go)) go->x-=1*game->speed;
-			if (right(go)) go->x+=1*game->speed;
+			if (up(go->control)) go->y-=1*game->speed;
+			if (down(go->control)) go->y+=1*game->speed;
+			if (left(go->control)) go->x-=1*game->speed;
+			if (right(go->control)) go->x+=1*game->speed;
 			//Position rounding
-			if (!left(go) && !right(go) && fmod(round(go->x),8)!=0){
+			if (!left(go->control) && !right(go->control) && fmod(round(go->x),8)!=0){
 				go->x=round(go->x);
 				if (fmod(go->x,8.0)<4) go->x-=1;
 				else go->x++;
@@ -1108,7 +1120,7 @@ void destroy_object(GameObject* go){
 		case (PEN_ID):
 			add_object_at_position(objects, ghost(go->id, go),go->id);
 			game->difficulty*=.9;
-			printf("Difficulty: %f\n",game->difficulty);
+			//printf("Difficulty: %f\n",game->difficulty);
 			for (int i=0;i<10;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));
 			break;
 		case (GHO_ID):

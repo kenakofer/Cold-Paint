@@ -12,6 +12,7 @@ typedef enum {BLACKEN=-3, WIPEOUT=-2, RAIN=-1, NONE=0, SAFE_WATER=1, SAFE_EXPLOD
 typedef enum {NULL_ID=0,PEN_ID,BOX_ID,BOM_ID,MET_ID,WAT_ID,EXP_ID,SPL_ID,CRA_ID,MIS_ID,DRI_ID,GHO_ID,NUM_ID,BON_ID,POW_ID,SMA_ID,WIP_ID} classids;
 
 
+
 typedef struct {
 	int id;
 	int classid;
@@ -51,7 +52,7 @@ typedef struct {
 } ObjectList;
 
 typedef struct {
-	char bitarray; //Actually storing bits of info
+	char* bitarray; //Actually storing bits of info
 	int size;	   //In bits. Should be multiple of 8
 	int capacity;  //In bits.
 } MovementList;
@@ -62,6 +63,7 @@ typedef struct {
 	int resolution;		//how wide/tall are the cells
 	Color background;
 
+	double pen_num;
 	double pen_jump;
 	double pen_move;
 	double difficulty;
@@ -84,6 +86,7 @@ typedef struct {
 	int seed;
 	bool replaying;
 	bool recording;
+	char recordfile[50];
 
 	MovementList movements;
 
