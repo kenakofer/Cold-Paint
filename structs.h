@@ -66,6 +66,7 @@ typedef struct {
 	double pen_num;
 	double pen_jump;
 	double pen_move;
+	double init_difficulty;
 	double difficulty;
 	double normal_speed;
 	double FPS;

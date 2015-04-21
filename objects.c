@@ -8,6 +8,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <gsl/gsl_rng.h>
 
 //#define go_in_objects{ (int i=0; i<objects->size; i++){ GameObject* go = get_object(objects, i);
 
@@ -15,6 +16,48 @@ GameProperties* game;
 ObjectList* objects;
 int global_timer=0;
 
+int randcount=0;
+
+gsl_rng *r1, *r2, *r3;
+
+void setup_random(){
+  const gsl_rng_type * T;
+  gsl_rng_env_setup();
+  T = gsl_rng_default;                       
+  r1 = gsl_rng_alloc (T);
+  r2 = gsl_rng_alloc (T);
+  r3 = gsl_rng_alloc (T);
+	printf("max: %i\n",gsl_rng_max(r1));
+	printf("min: %i\n",gsl_rng_min(r1));
+}
+
+int random(int whichgen){
+	int result;
+	switch (whichgen){
+		case (0):
+			result=gsl_rng_uniform_int(r1,1000001);
+			break;
+		case (1):
+			result=gsl_rng_uniform_int(r2,1000001);
+			break;
+		case (2):
+			result=gsl_rng_uniform_int(r3,1000001);
+			break;
+		default:
+			result= rand();
+			break;
+	}
+	if (!whichgen) printf("%i: %i\n",game->step,result);
+	return result;
+}
+/*
+int random(int marker){
+	randcount++;
+	int r=rand();
+	printf("%i,%i,%i: %i\n",randcount,game->step,marker,r);
+	return r;
+}
+*/
 
 void slo_mo(){
 	game->speed=game->slomo_speed;
@@ -24,6 +67,10 @@ void slo_mo(){
 void gamethread(){
 	while (true) {
 		int start=SDL_GetTicks();
+
+		//Keyboard events
+		if (handleEvents()==-1) return;
+
 		if (!P()){
 			GameObject o;
 			GameObject* other;
@@ -42,7 +89,7 @@ void gamethread(){
 			//Crawlers
 			int prob=(int)(pow(145-objects->size,1.82)/game->speed);
 			if (prob<50) prob=50;
-			if (rand()%prob==0 && object_count(objects,CRA_ID)==0){
+			if (random(0)%prob==0 && object_count(objects,CRA_ID)==0){
 				o=crawler(objects->size,0,468);
 				add_object(objects, o);
 			}
@@ -73,21 +120,24 @@ void gamethread(){
 				remove_index(objects,i);	
 				destroy_object(&go);
 			}
+
+			//Recording/Replaying
+			if (game->recording) for (int i=0; i<game->pen_num; i++){
+				setbit(&(game->movements), game->movements.size, up(i));
+				setbit(&(game->movements), game->movements.size, down(i));
+				setbit(&(game->movements), game->movements.size, left(i));
+				setbit(&(game->movements), game->movements.size, right(i));
+			}
+			else if (game->replaying){
+				fetch_movements(&(game->movements), game->pen_num, game->step);
+			}
+
+			game->step++;
 		}
 
-		//Keyboard events
-		if (handleEvents()==-1) return;
-		if (game->recording) for (int i=0; i<game->pen_num; i++){
-			setbit(&(game->movements), game->movements.size, up(i));
-			setbit(&(game->movements), game->movements.size, down(i));
-			setbit(&(game->movements), game->movements.size, left(i));
-			setbit(&(game->movements), game->movements.size, right(i));
-		}
-		else if (game->replaying){
-			fetch_movements(&(game->movements), game->pen_num, game->step);
-		}
 
 		//Drawing
+		//
 		clear_graphics();
 		for (int i=1;i<objects->size;i++) if (!get_object(objects,i)->effect) {
 			draw_object(get_object(objects,i));
@@ -101,9 +151,8 @@ void gamethread(){
 		//Delay
 		int dur=SDL_GetTicks()-start;
 		if (dur<1000/game->FPS) SDL_Delay(1000/game->FPS - dur);
-		else printf("That frame took %i milliseconds!\n",dur);
+//		else printf("That frame took %i milliseconds!\n",dur);
 
-		game->step++;
 	}
 }
 
@@ -112,18 +161,22 @@ void start_game(GameProperties * g){
 	objects=&(g->objects);
 	//Open window
 	init_graphics(0,0,512,500,game->background);
+	srand(0);
+	setup_random();
 
 	//Initial objects
 	*objects=objectList(200);
 	add_object(objects, water(objects->size,-10,game->height-32));
-	add_object(objects, penguin(objects->size,arrows(),game->width/2,game->height/2,color(255,255,255)));
-//	add_object(objects, penguin(objects->size,wasd(),game->width/2,game->height/2,color(0,255,255)));
+	if (game->pen_num>0) add_object(objects, penguin(objects->size,arrows(),game->width/2,game->height/2,color(255,255,255)));
+	if (game->pen_num>1) add_object(objects, penguin(objects->size,wasd(),game->width/2,game->height/2,color(0,255,255)));
 	for (int i=0;i<game->width;i+=32)
 		add_object(objects, box(objects->size,i,game->height-100));
 
-	srand(0);
 	gamethread();
-	write_data(game->recordfile, game);
+	gsl_rng_free (r1);
+	gsl_rng_free (r2);
+	gsl_rng_free (r3);
+	if (game->recording) write_movement_data(game->recordfile, game);
 }
 
 void set_score(GameObject * go,int s){
@@ -172,6 +225,7 @@ GameObject penguin_from_ghost(int id, GameObject* g) {
 	p.classid=PEN_ID;
 	p.x=g->x;
 	p.y=g->y;
+	//printf("Penguin from ghost!!!");
 	p.width=game->resolution;
 	p.height=game->resolution*2;
 	p.will_destroy=false;
@@ -237,7 +291,7 @@ GameObject bomb(int id, double x, double y){
 	o.yspeed=0;
 	o.timer=game->bomb_time;
 	o.solid=true;
-	o.color=color(200+rand()%30,100+rand()%10,100+rand()%10);
+	o.color=color(200+random(3)%30,100+random(3)%10,100+random(3)%10);
 	o.explodable=true;
 	o.effect=false;
 	o.floats=true;
@@ -260,7 +314,7 @@ GameObject box(int id, double x, double y){
 	o.xspeed=0;
 	o.yspeed=0;
 	o.solid=true;
-	o.color=color(200+rand()%30,100+rand()%10,100+rand()%10);
+	o.color=color(200+random(6)%30,100+random(7)%10,100+random(8)%10);
 	o.explodable=true;
 	o.effect=false;
 	o.floats=true;
@@ -291,7 +345,7 @@ GameObject bonusbox(int id, double x, double y){
 	o.xspeed=0;
 	o.yspeed=0;
 	o.solid=true;
-	o.color=color(200+rand()%30,100+rand()%10,100+rand()%10);
+	o.color=color(200+random(9)%30,100+random(10)%10,100+random(11)%10);
 	o.explodable=true;
 	o.effect=false;
 	o.floats=true;
@@ -314,13 +368,13 @@ GameObject powerbox(int id, double x, double y){
 	o.xspeed=0;
 	o.yspeed=0;
 	o.solid=true;
-	o.color=color(200+rand()%30,150+rand()%10,120+rand()%10);
+	o.color=color(200+random(12)%30,150+random(12)%10,120+random(12)%10);
 	o.explodable=true;
 	o.effect=false;
 	o.floats=true;
 	o.marked=-1;
 	o.score=0;
-	o.pow=rand()%2-3;
+	o.pow=random(13)%2-3;
 	o.no_leave_screen=false;
 	o.blacken=false;
 	return o;
@@ -338,7 +392,7 @@ GameObject metal(int id, double x, double y){
 	o.xspeed=0;
 	o.yspeed=0;
 	o.solid=true;
-	o.color=color(150+rand()%30,150+rand()%10,150+rand()%10);
+	o.color=color(150+random(14)%30,150+random(15)%10,150+random(16)%10);
 	o.explodable=false;
 	o.effect=false;
 	o.floats=false;
@@ -394,15 +448,15 @@ GameObject splinter(int id, Color c, double x, double y){
 	GameObject o;
 	o.id=id;
 	o.classid=SPL_ID;
-	int radius=rand()%5+1;
+	int radius=random(17)%5+1;
 	o.x=x-radius;
 	o.y=y-radius;
 	o.width=2*radius;
 	o.height=2*radius;
 	o.will_destroy=false;
 	o.on_ground=false;
-	o.xspeed=rand()%20-10;
-	o.yspeed=rand()%20-10;
+	o.xspeed=random(18)%20-10;
+	o.yspeed=random(19)%20-10;
 	o.solid=false;
 	o.explodable=false;
 	o.effect=true;
@@ -487,8 +541,8 @@ GameObject number(int id, int n, Color c, double x, double y){
 	o.height=20;
 	o.will_destroy=false;
 	o.on_ground=false;
-	o.xspeed=rand()%6-3;
-	o.yspeed=rand()%5-10;
+	o.xspeed=random(20)%6-3;
+	o.yspeed=random(21)%5-10;
 	o.solid=false;
 	o.explodable=false;
 	o.effect=true;
@@ -504,7 +558,7 @@ GameObject wipeout(int id, double x, double y){
 	GameObject o;
 	o.id=id;
 	o.classid=WIP_ID;
-	if (rand()%2==0){
+	if (random(22)%2==0){
 		o.x=0;
 		o.xspeed=.5;
 	} else {
@@ -535,8 +589,10 @@ GameObject* null(){
 }
 
 bool probably_add_object( double probability, GameObject (*f)(int i, double j, double k)){
-	if (rand()%100000<probability*100000){
-		GameObject o= f(objects->size,round(rand()%(game->width-32)/16.0)*16,-32);
+	int r=random(0);
+	//printf("%i<%f\n",r%100000,probability*100000);
+	if (r%100000<probability*100000){
+		GameObject o= f(objects->size,round(random(0)%(game->width-32)/16.0)*16,-32);
 		if (is_touching_solid(&o)->classid==NULL_ID)
 			add_object(objects, o);
 			return true;
@@ -686,7 +742,7 @@ void add_negative(int which){
 }
 
 void add_powerup(GameObject* go){
-	int which=rand()%3;
+	int which=random(1)%3;
 	switch (which){
 		case (0): 
 			go->floats=true;
@@ -851,7 +907,7 @@ void step_object(GameObject* go){
 
 
 					other->marked=go->id;
-					other->color=lighten(go->color,-20-(rand()%15)); //TODO
+					other->color=lighten(go->color,-20/*-(random(26*go->id)%15)*/); //TODO
 					if (other->classid==BON_ID) other->score+=2;
 
 				}
@@ -859,8 +915,8 @@ void step_object(GameObject* go){
 
 			//Drip effect
 			//TODO
-			if (rand()%(int)(20/game->speed+2)==0){
-				add_object(objects, drip(objects->size,lighten(go->color,-50),go->x+(rand()%go->width),go->y+(rand()%go->height)));
+			if (random(27*go->id)%(int)(20/game->speed+2)==0){
+				add_object(objects, drip(objects->size,lighten(go->color,-50),go->x+(random(28)%go->width),go->y+(random(29)%go->height)));
 			}
 
 			//POwerup timer
@@ -896,7 +952,7 @@ void step_object(GameObject* go){
 					add_score(get_object(objects, go->marked),go->score);
 					add_object(objects, number(objects->size,go->score,go->color,go->x+go->width/2,go->y+go->height-5));
 					go->marked=-2;
-					go->color=color(150+rand()%30,150+rand()%10,150+rand()%10); //TODO
+					go->color=color(150+random(30)%30,150+random(31)%10,150+random(32)%10); //TODO
 				}
 
 

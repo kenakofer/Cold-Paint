@@ -12,9 +12,10 @@ void init_game(GameProperties * game) {
 	game->resolution=	16;		//how wide/tall are the cells
 	game->background=	color(100,133,200);
 
-	game->pen_num=		1;
+	game->pen_num=		2;
 	game->pen_jump=		-10.0;
 	game->pen_move=		3.02;
+	game->init_difficulty=.5;
 	game->difficulty=	.5;
 	game->FPS=			60.0;
 	game->gravity=		0.35;
@@ -44,12 +45,15 @@ int main( int argc, char *args[]){
 	if (argc>2){
 		if (strcmp(args[1],"record")==0){
 			game.recording=true;
+			write_init_data(args[2],&game);
 		}
 		else if (strcmp(args[1],"replay")==0){
 			read_data(args[2], &game);
 			game.replaying=true;
 			game.recording=false;
 			game.step=0;
+			game.difficulty=game.init_difficulty;
+			game.objects=objectList(50);
 		}
 		strcpy(game.recordfile,args[2]);
 	}

@@ -75,7 +75,7 @@ bool P(){return P_key;}
 int fetch_movements(MovementList* ml, int pen_num, int which_frame){
 	for (int i=0;i<pen_num;i++){
 		for (int dir=0; dir<4; dir++){
-			keys[i][dir]=getbit(ml,which_frame*pen_num*4+dir);
+			keys[i][dir]=getbit(ml,which_frame*pen_num*4 + i*4 + dir);
 		}			
 	}
 }

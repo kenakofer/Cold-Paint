@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c99 -lSDL2 -lm -g
+CFLAGS=-std=c99 -lSDL2 -lgsl -lgslcblas -lm -g
 
 cold_paint: cold_paint.c objects.o objectlist.o events.o graphics.o bitoperations.o
 	$(CC) -o cold_paint cold_paint.c objects.o objectlist.o events.o graphics.o bitoperations.o $(CFLAGS)

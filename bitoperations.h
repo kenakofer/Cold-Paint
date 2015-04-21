@@ -11,7 +11,8 @@ bool getbit(MovementList * ml, int which);
 
 void read_data(char* filename, GameProperties* gp);
 
-void write_data(char* filename, GameProperties* gp);
+void write_init_data(char* filename, GameProperties* gp);
+void write_movement_data(char* filename, GameProperties* gp);
 
 
 #endif
