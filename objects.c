@@ -23,12 +23,10 @@ gsl_rng *r1, *r2, *r3;
 void setup_random(){
   const gsl_rng_type * T;
   gsl_rng_env_setup();
-  T = gsl_rng_default;                       
+  T = gsl_rng_default;
   r1 = gsl_rng_alloc (T);
   r2 = gsl_rng_alloc (T);
   r3 = gsl_rng_alloc (T);
-	printf("max: %i\n",gsl_rng_max(r1));
-	printf("min: %i\n",gsl_rng_min(r1));
 }
 
 int random(int whichgen){
@@ -47,14 +45,12 @@ int random(int whichgen){
 			result= rand();
 			break;
 	}
-	if (!whichgen) printf("%i: %i\n",game->step,result);
 	return result;
 }
 /*
 int random(int marker){
 	randcount++;
 	int r=rand();
-	printf("%i,%i,%i: %i\n",randcount,game->step,marker,r);
 	return r;
 }
 */
@@ -74,7 +70,7 @@ void gamethread(){
 		if (!P()){
 			GameObject o;
 			GameObject* other;
-		
+
 			//rain stuff
 			double factor = game->speed * game->difficulty;
 			probably_add_object(1/30.0*factor, bomb);
@@ -109,7 +105,7 @@ void gamethread(){
 					game->speed = game->normal_speed;
 			}
 
-			
+
 
 			//Step
 			for (int i=0;i<size;i++) step_object(get_object(objects,i));
@@ -117,7 +113,7 @@ void gamethread(){
 			//Removal
 			for (int i=0;i<objects->size;i++) if (get_object(objects, i)->will_destroy){
 				GameObject go = *get_object(objects, i);
-				remove_index(objects,i);	
+				remove_index(objects,i);
 				destroy_object(&go);
 			}
 
@@ -151,7 +147,6 @@ void gamethread(){
 		//Delay
 		int dur=SDL_GetTicks()-start;
 		if (dur<1000/game->FPS) SDL_Delay(1000/game->FPS - dur);
-//		else printf("That frame took %i milliseconds!\n",dur);
 
 	}
 }
@@ -185,7 +180,6 @@ void set_score(GameObject * go,int s){
 void add_score(GameObject * go,int s){
 	go->score+=s;
 	game->difficulty+= .002*s;
-//	printf("Difficulty: %f\n",game->difficulty);
 }
 int get_score(GameObject * go){
 	return go->score;
@@ -225,7 +219,6 @@ GameObject penguin_from_ghost(int id, GameObject* g) {
 	p.classid=PEN_ID;
 	p.x=g->x;
 	p.y=g->y;
-	//printf("Penguin from ghost!!!");
 	p.width=game->resolution;
 	p.height=game->resolution*2;
 	p.will_destroy=false;
@@ -590,7 +583,6 @@ GameObject* null(){
 
 bool probably_add_object( double probability, GameObject (*f)(int i, double j, double k)){
 	int r=random(0);
-	//printf("%i<%f\n",r%100000,probability*100000);
 	if (r%100000<probability*100000){
 		GameObject o= f(objects->size,round(random(0)%(game->width-32)/16.0)*16,-32);
 		if (is_touching_solid(&o)->classid==NULL_ID)
@@ -731,20 +723,20 @@ void add_negative(int which){
 			add_object(objects, wipeout(objects->size,0,0));
 			break;
 		case (BLACKEN):
-			for (int i=0; i<objects->size; i++){ GameObject* go = get_object(objects, i);	
+			for (int i=0; i<objects->size; i++){ GameObject* go = get_object(objects, i);
 //			for go_in_objects{ TODO fix
 				if (go->classid!=WAT_ID && go->effect==false)
 					go->blacken=true;
 			}
 			break;
-		
+
 	}
 }
 
 void add_powerup(GameObject* go){
 	int which=random(1)%3;
 	switch (which){
-		case (0): 
+		case (0):
 			go->floats=true;
 			go->pow=go->pow | SAFE_WATER;
 			break;
@@ -839,7 +831,6 @@ void step_object(GameObject* go){
 
 			//Ninja jump off missile
 			if (up(go->control) && (other=is_touching_class(go,MIS_ID))->classid!=NULL_ID){
-				printf("Got it!\n");
 				go->yspeed = game->pen_jump;
 				go->y+= go->yspeed-5;
 				if (!is_touching(go,other)){
@@ -891,7 +882,7 @@ void step_object(GameObject* go){
 			if (up(go->control) && go->on_ground) {
 				go->yspeed=game->pen_jump;
 				go->on_ground=false;
-			}			
+			}
 
 			//Check to see if the penguin is chillin in the water
 			if (is_touching_water(go)) go->will_destroy=true;
@@ -1056,7 +1047,7 @@ void draw_object(GameObject* go){
 	int height;
 
 	if (go->blacken){
-		fillRect(color(0,0,0),x,y,w,h);	
+		fillRect(color(0,0,0),x,y,w,h);
 	}
 	else
 	switch (go->classid){
@@ -1144,7 +1135,7 @@ void draw_object(GameObject* go){
 	}
 }
 void destroy_object(GameObject* go){
-	
+
 
 	if (!go->effect && go->marked>-1){
 		add_score(get_object(objects, go->marked),go->score);
@@ -1162,9 +1153,9 @@ void destroy_object(GameObject* go){
 		case (POW_ID):
 			if (go->marked<=-1){
 				add_negative(go->pow);
-			} else if (get_object(objects,go->marked)->classid==PEN_ID) 
+			} else if (get_object(objects,go->marked)->classid==PEN_ID)
 				add_powerup(get_object(objects,go->marked));
-			
+
 		case (BOX_ID):
 		case (BON_ID):
 		case (SMA_ID):
@@ -1176,7 +1167,6 @@ void destroy_object(GameObject* go){
 		case (PEN_ID):
 			add_object_at_position(objects, ghost(go->id, go),go->id);
 			game->difficulty*=.9;
-			//printf("Difficulty: %f\n",game->difficulty);
 			for (int i=0;i<10;i++)add_object(objects, splinter(objects->size,go->color,go->x+go->width/2,go->y+go->height/2));
 			break;
 		case (GHO_ID):
@@ -1185,4 +1175,3 @@ void destroy_object(GameObject* go){
 
 	}
 }
-

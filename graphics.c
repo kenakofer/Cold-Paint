@@ -24,12 +24,12 @@ void fillRect(Color c, int x, int y, int width, int height){
     SDL_SetRenderDrawColor(g.renderer, c.red, c.green, c.blue, c.alpha);
     SDL_Rect r = {x, y, width, height};
     SDL_RenderFillRect(g.renderer, &r);
-} 
+}
 void outlineRect(Color c, int x, int y, int width, int height){
     SDL_SetRenderDrawColor(g.renderer, c.red, c.green, c.blue, c.alpha);
     SDL_Rect r = {x, y, width, height};
     SDL_RenderDrawRect(g.renderer, &r);
-} 
+}
 
 void drawLine(Color c, int x1, int y1, int x2, int y2){
 	SDL_SetRenderDrawColor(g.renderer, c.red, c.green, c.blue, c.alpha);
@@ -155,7 +155,7 @@ void drawNum(Color c, int n, int x, int y, int width, int height){
 }
 
 void clear_graphics(){
-    SDL_SetRenderDrawColor(g.renderer, g.background.red, 
+    SDL_SetRenderDrawColor(g.renderer, g.background.red,
                            g.background.green, g.background.blue, g.background.alpha);
     SDL_RenderClear(g.renderer);
 }
@@ -247,7 +247,7 @@ Framerate initFramerate(int fps){
 Framerate capFrame(Framerate f){
     int ticksSince = SDL_GetTicks() - f.lastTick;
     if( ticksSince < f.tpf){
-        SDL_Delay( f.tpf - ticksSince); 
+        SDL_Delay( f.tpf - ticksSince);
     }
     f.frames++;
     f.lastTick = SDL_GetTicks();

@@ -57,7 +57,6 @@ int main( int argc, char *args[]){
 		}
 		strcpy(game.recordfile,args[2]);
 	}
-	printf("%i\n",rand());
 	start_game(&game);
 	obliterate_graphics();
 }

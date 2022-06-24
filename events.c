@@ -76,7 +76,7 @@ int fetch_movements(MovementList* ml, int pen_num, int which_frame){
 	for (int i=0;i<pen_num;i++){
 		for (int dir=0; dir<4; dir++){
 			keys[i][dir]=getbit(ml,which_frame*pen_num*4 + i*4 + dir);
-		}			
+		}
 	}
 }
 
@@ -123,7 +123,6 @@ int handleEvents(){
 					P_key=true;
 					break;
 			}
-		//	printf("%i\n",e.key.keysym.scancode);
 		}
 		if (e.type == SDL_KEYUP){
 			for (int i=0; i<2; i++) for (int j=0; j<4; j++){
